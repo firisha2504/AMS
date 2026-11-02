@@ -1,0 +1,23 @@
+{
+  "name": "afosha-management-system",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Afosha Management System - Web, Mobile, and Backend",
+  "workspaces": [
+    "backend",
+    "web"
+  ],
+  "scripts": {
+    "dev:backend": "npm run dev --workspace=backend",
+    "dev:web": "npm run dev --workspace=web",
+    "build:backend": "npm run build --workspace=backend",
+    "build:web": "npm run build --workspace=web",
+    "db:migrate": "npm run db:migrate --workspace=backend",
+    "db:seed": "npm run db:seed --workspace=backend",
+    "db:generate": "npm run db:generate --workspace=backend",
+    "postinstall": "npm run db:generate"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

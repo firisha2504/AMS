@@ -1,0 +1,29 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <!-- Green gradient matching web favicon -->
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#166534"/>
+      <stop offset="100%" style="stop-color:#15803d"/>
+    </linearGradient>
+    <linearGradient id="shine" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#ffffff;stop-opacity:0.15"/>
+      <stop offset="100%" style="stop-color:#ffffff;stop-opacity:0"/>
+    </linearGradient>
+  </defs>
+  <!-- Background with green gradient -->
+  <rect width="1024" height="1024" rx="225" fill="url(#bg)"/>
+  <!-- Shine overlay on top half -->
+  <rect width="1024" height="512" rx="225" fill="url(#shine)"/>
+  <!-- Large "A" letter in center -->
+  <text x="512" y="738"
+    font-family="Georgia, 'Times New Roman', serif"
+    font-size="635"
+    font-weight="bold"
+    text-anchor="middle"
+    fill="white"
+    letter-spacing="-20">A</text>
+  <!-- Golden/amber decorative circle (outer) - matching web favicon -->
+  <circle cx="738" cy="307" r="72" fill="#fbbf24" opacity="0.6"/>
+  <!-- Golden/amber decorative circle (inner) - matching web favicon -->
+  <circle cx="738" cy="307" r="41" fill="#fbbf24" opacity="0.9"/>
+</svg>

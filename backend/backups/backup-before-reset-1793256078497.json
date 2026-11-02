@@ -1,0 +1,79 @@
+{
+  "members": [
+    {
+      "id": "dac7edaf-0698-4df8-bfbd-211b77474a0b",
+      "memberId": "MEM-1793254591380",
+      "userId": "7a3eecce-0bf0-4a90-9177-5d8785a059a0",
+      "fullName": "Abdi Ahmed Test",
+      "gender": "MALE",
+      "dateOfBirth": "1990-01-15T00:00:00.000Z",
+      "address": null,
+      "occupation": null,
+      "profilePicture": null,
+      "registrationDate": "2026-10-29T06:16:32.143Z",
+      "joinDate": "2026-01-01T00:00:00.000Z",
+      "status": "APPROVED",
+      "rejectionReason": null,
+      "totalCredit": "0",
+      "outstandingBalance": "0",
+      "createdAt": "2026-10-29T06:16:32.143Z",
+      "updatedAt": "2026-10-29T06:25:12.559Z"
+    }
+  ],
+  "payments": [
+    {
+      "id": "3541e85a-2788-498b-87f3-6dd22cb68e14",
+      "paymentId": "PAY-1793255112513-635",
+      "memberId": "dac7edaf-0698-4df8-bfbd-211b77474a0b",
+      "obligationId": "3d58d4cd-7656-423f-9a2e-795fae9bef87",
+      "specialContributionObligationId": null,
+      "amount": "50",
+      "paymentDate": "2026-10-29T06:25:12.514Z",
+      "paymentMethod": "CASH",
+      "transactionReference": null,
+      "status": "PENDING",
+      "recordedById": "687ebd83-59be-40c7-ac55-bb19d5f1da96",
+      "verifiedById": null,
+      "verifiedAt": null,
+      "receiptNumber": "RCP-1793255112513-6480",
+      "notes": null,
+      "createdAt": "2026-10-29T06:25:12.514Z",
+      "updatedAt": "2026-10-29T06:25:12.514Z"
+    }
+  ],
+  "penalties": [],
+  "obligations": [
+    {
+      "id": "e20cd82e-c5ed-45e7-9a28-3eacb005fc17",
+      "memberId": "dac7edaf-0698-4df8-bfbd-211b77474a0b",
+      "weekNumber": 97,
+      "year": 2026,
+      "dueDate": "2026-11-06T21:00:00.000Z",
+      "contributionAmount": "50",
+      "penaltyAmount": "0",
+      "totalDue": "50",
+      "amountPaid": "0",
+      "status": "PENDING",
+      "isMonthlyPenalty": false,
+      "consecutiveMissedWeeks": 0,
+      "createdAt": "2026-10-29T06:23:58.882Z",
+      "updatedAt": "2026-10-29T06:23:58.882Z"
+    },
+    {
+      "id": "3d58d4cd-7656-423f-9a2e-795fae9bef87",
+      "memberId": "dac7edaf-0698-4df8-bfbd-211b77474a0b",
+      "weekNumber": 96,
+      "year": 2026,
+      "dueDate": "2026-10-30T21:00:00.000Z",
+      "contributionAmount": "50",
+      "penaltyAmount": "0",
+      "totalDue": "50",
+      "amountPaid": "50",
+      "status": "PAID",
+      "isMonthlyPenalty": false,
+      "consecutiveMissedWeeks": 0,
+      "createdAt": "2026-10-29T06:23:58.790Z",
+      "updatedAt": "2026-10-29T06:25:12.553Z"
+    }
+  ]
+}

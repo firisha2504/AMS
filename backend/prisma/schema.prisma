@@ -1,0 +1,686 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  AUDITOR
+  MEMBER
+}
+
+enum MemberStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SUSPENDED
+  INACTIVE
+  GRADUATED
+  DECEASED
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+
+enum PaymentMethod {
+  CASH
+  BANK_TRANSFER
+  MOBILE_MONEY
+}
+
+enum PaymentProvider {
+  M_PESA
+  TELEBIRR
+  CBE
+  EBIRR
+}
+
+enum PaymentStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  EXCUSED
+}
+
+enum TransactionType {
+  WEEKLY_CONTRIBUTION
+  PENALTY
+  FINE
+  SPECIAL_CONTRIBUTION
+  ADJUSTMENT
+  REFUND
+}
+
+enum NotificationType {
+  MEETING_REMINDER
+  PAYMENT_REMINDER
+  PENALTY_NOTICE
+  PAYMENT_CONFIRMATION
+  SYSTEM_ANNOUNCEMENT
+  ACCOUNT_UPDATE
+  SPECIAL_CONTRIBUTION
+}
+
+enum OtpPurpose {
+  LOGIN
+  PASSWORD_RESET
+  ACCOUNT_VERIFICATION
+}
+
+enum OtpChannel {
+  SMS
+  EMAIL
+}
+
+enum ObligationStatus {
+  PENDING
+  PAID
+  PARTIAL
+  OVERDUE
+}
+
+enum SpecialContributionType {
+  GRADUATION
+  BEREAVEMENT
+  EMERGENCY
+}
+
+enum FamilyRelationship {
+  SELF
+  FATHER
+  MOTHER
+  BROTHER
+  SISTER
+  UNCLE
+  AUNT
+}
+
+enum SpecialContributionStatus {
+  ACTIVE
+  CLOSED
+  CANCELLED
+}
+
+enum PenaltyStatus {
+  OUTSTANDING
+  SETTLED
+  WAIVED
+}
+
+model User {
+  id                String    @id @default(uuid())
+  username          String?   @unique
+  phone             String?   @unique
+  email             String?   @unique
+  passwordHash      String
+  role              UserRole
+  isActive          Boolean   @default(true)
+  isVerified        Boolean   @default(false)
+  preferredLanguage String    @default("om")
+  failedLoginAttempts Int     @default(0)
+  lockedUntil       DateTime?
+  lastLoginAt       DateTime?
+  mustChangePassword Boolean  @default(false)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  member            Member?
+  auditLogs         AuditLog[]
+  recordedPayments  Payment[]       @relation("RecordedBy")
+  verifiedPayments  Payment[]       @relation("VerifiedBy")
+  recordedFines     Fine[]
+  notifications     Notification[]
+  createdMeetings   Meeting[]
+  recordedAttendance Attendance[]
+  transactions      Transaction[]
+  otpCodes          OtpCode[]
+  refreshTokens     RefreshToken[]
+  specialContributions SpecialContribution[]
+  verifiedPaymentRequests PaymentRequest[]
+  expenses          Expense[]       @relation("UserExpenses")
+  yearEndApprovals  YearEndSummary[] @relation("YearEndApprovals")
+  authorizedReversals TransactionReversal[] @relation("AuthorizedReversals")
+
+  @@index([role])
+  @@index([phone])
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Member {
+  id                 String       @id @default(uuid())
+  memberId           String       @unique
+  userId             String       @unique
+  fullName           String
+  gender             Gender
+  dateOfBirth        DateTime
+  address            String?
+  occupation         String?
+  profilePicture     String?
+  registrationDate   DateTime     @default(now())
+  joinDate           DateTime     @default(now())
+  status             MemberStatus @default(PENDING)
+  rejectionReason    String?
+  totalCredit        Decimal      @default(0) @db.Decimal(12, 2)
+  outstandingBalance Decimal      @default(0) @db.Decimal(12, 2)
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+
+  user               User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emergencyContact   EmergencyContact?
+  payments           Payment[]
+  penalties          Penalty[]
+  fines              Fine[]
+  obligations        WeeklyObligation[]
+  joiningObligation  JoiningObligation?
+  attendanceRecords  Attendance[]
+  transactions       Transaction[]
+  notifications      Notification[]
+  specialContributionObligations SpecialContributionObligation[]
+  beneficiaryContributions     SpecialContribution[] @relation("BeneficiaryMember")
+  paymentRequests    PaymentRequest[]
+  receipts           Receipt[]           @relation("MemberReceipts")
+
+  @@index([status])
+  @@index([fullName])
+  @@index([memberId])
+}
+
+model EmergencyContact {
+  id           String  @id @default(uuid())
+  memberId     String  @unique
+  fullName     String
+  relationship String
+  phone        String
+  address      String?
+
+  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+}
+
+model WeeklyObligation {
+  id              String           @id @default(uuid())
+  memberId        String
+  weekNumber      Int
+  year            Int
+  dueDate         DateTime
+  contributionAmount Decimal       @db.Decimal(12, 2)
+  penaltyAmount   Decimal          @default(0) @db.Decimal(12, 2)
+  totalDue        Decimal          @db.Decimal(12, 2)
+  amountPaid      Decimal          @default(0) @db.Decimal(12, 2)
+  status          ObligationStatus @default(PENDING)
+  isMonthlyPenalty Boolean         @default(false)
+  consecutiveMissedWeeks Int       @default(0)
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  member   Member    @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  payments Payment[]
+  paymentRequests PaymentRequest[] @relation("PaymentRequestWeekly")
+
+  @@unique([memberId, weekNumber, year])
+  @@index([dueDate])
+  @@index([status])
+}
+
+model Payment {
+  id                   String        @id @default(uuid())
+  paymentId            String        @unique
+  memberId             String
+  obligationId         String?
+  specialContributionObligationId String?
+  amount               Decimal       @db.Decimal(12, 2)
+  paymentDate          DateTime      @default(now())
+  paymentMethod        PaymentMethod
+  transactionReference String?
+  status               PaymentStatus @default(PENDING)
+  recordedById         String
+  verifiedById         String?
+  verifiedAt           DateTime?
+  receiptNumber        String?       @unique
+  notes                String?
+  appliedAt            DateTime?     // When payment was applied to obligation (idempotency marker)
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+
+  member      Member            @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  obligation  WeeklyObligation? @relation(fields: [obligationId], references: [id])
+  specialContributionObligation SpecialContributionObligation? @relation(fields: [specialContributionObligationId], references: [id])
+  recordedBy  User              @relation("RecordedBy", fields: [recordedById], references: [id])
+  verifiedBy  User?             @relation("VerifiedBy", fields: [verifiedById], references: [id])
+  receipt     Receipt?          @relation("PaymentReceipt")
+  allocations PaymentAllocation[] @relation("AllocatedPayments")
+
+  @@index([memberId])
+  @@index([paymentDate])
+  @@index([status])
+}
+
+model Penalty {
+  id          String        @id @default(uuid())
+  memberId    String
+  weekNumber  Int?
+  year        Int?
+  amount      Decimal       @db.Decimal(12, 2)
+  reason      String
+  isMonthly   Boolean       @default(false)
+  status      PenaltyStatus @default(OUTSTANDING)
+  paidAt      DateTime?
+  createdAt   DateTime      @default(now())
+
+  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@unique([memberId, weekNumber, year], name: "penalty_per_week")
+  @@index([memberId])
+  @@index([status])
+}
+
+model Fine {
+  id          String   @id @default(uuid())
+  memberId    String
+  fineType    String
+  amount      Decimal  @db.Decimal(12, 2)
+  reason      String
+  fineDate    DateTime @default(now())
+  isPaid      Boolean  @default(false)
+  createdById String
+  createdAt   DateTime @default(now())
+
+  member    Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  createdBy User   @relation(fields: [createdById], references: [id])
+
+  @@index([memberId])
+}
+
+model Meeting {
+  id          String   @id @default(uuid())
+  title       String
+  location    String?
+  meetingDate DateTime
+  meetingTime String?
+  agenda      String?
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  createdBy  User         @relation(fields: [createdById], references: [id])
+  attendance Attendance[]
+
+  @@index([meetingDate])
+}
+
+model Attendance {
+  id        String           @id @default(uuid())
+  meetingId String
+  memberId  String
+  status    AttendanceStatus
+  remarks   String?
+  recordedById String
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  meeting    Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  member     Member  @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  recordedBy User    @relation(fields: [recordedById], references: [id])
+
+  @@unique([meetingId, memberId])
+  @@index([memberId])
+}
+
+model Transaction {
+  id            String          @id @default(uuid())
+  transactionId String          @unique
+  memberId      String?
+  type          TransactionType
+  amount        Decimal         @db.Decimal(12, 2)
+  description   String
+  recordedById  String
+  transactionDate DateTime      @default(now())
+  createdAt     DateTime        @default(now())
+
+  member     Member? @relation(fields: [memberId], references: [id])
+  recordedBy User    @relation(fields: [recordedById], references: [id])
+
+  @@index([memberId])
+  @@index([type])
+  @@index([transactionDate])
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String?
+  memberId  String?
+  type      NotificationType
+  title     String
+  titleOm   String?
+  message   String
+  messageOm String?
+  isRead    Boolean          @default(false)
+  metadata  Json?
+  createdAt DateTime         @default(now())
+
+  user   User?   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  member Member? @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([memberId])
+  @@index([isRead])
+}
+
+model AuditLog {
+  id        String   @id @default(uuid())
+  userId    String?
+  action    String
+  module    String
+  details   Json?
+  ipAddress String?
+  createdAt DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([module])
+  @@index([createdAt])
+}
+
+model SystemSetting {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     String
+  label     String?
+  labelOm   String?
+  updatedAt DateTime @updatedAt
+}
+
+// Track contribution rate changes over time for accurate historical calculations
+model ContributionRateHistory {
+  id          String   @id @default(uuid())
+  effectiveDate DateTime // When this rate became effective
+  weeklyAmount Decimal  @db.Decimal(12, 2) // Weekly contribution amount during this period
+  description String?  // e.g., "Increased from 50 to 100 ETB"
+  createdBy   String?
+  createdAt   DateTime @default(now())
+  
+  @@index([effectiveDate])
+  @@index([createdAt])
+}
+
+model OtpCode {
+  id        String     @id @default(uuid())
+  userId    String
+  code      String
+  purpose   OtpPurpose
+  channel   OtpChannel
+  expiresAt DateTime
+  isUsed    Boolean    @default(false)
+  attempts  Int        @default(0)
+  createdAt DateTime   @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([code])
+}
+
+model SmsLog {
+  id        String   @id @default(uuid())
+  phone     String
+  message   String
+  status    String
+  provider  String?
+  error     String?
+  createdAt DateTime @default(now())
+
+  @@index([phone])
+  @@index([createdAt])
+}
+
+model Backup {
+  id        String   @id @default(uuid())
+  filename  String
+  filePath  String
+  fileSize  Int
+  type      String
+  createdBy String?
+  createdAt DateTime @default(now())
+}
+
+model DeviceToken {
+  id        String   @id @default(uuid())
+  userId    String
+  token     String   @unique
+  platform  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model SpecialContribution {
+  id                   String                    @id @default(uuid())
+  campaignId           String                    @unique
+  type                 SpecialContributionType
+  title                String
+  titleOm              String?
+  description          String?
+  descriptionOm        String?
+  amount               Decimal                   @db.Decimal(12, 2)
+  dueDate              DateTime?
+  beneficiaryMemberId  String?
+  familyRelationship   FamilyRelationship?
+  targetMemberIds      Json?
+  status               SpecialContributionStatus @default(ACTIVE)
+  createdById          String
+  createdAt            DateTime                  @default(now())
+  updatedAt            DateTime                  @updatedAt
+
+  beneficiaryMember Member? @relation("BeneficiaryMember", fields: [beneficiaryMemberId], references: [id])
+  createdBy         User    @relation(fields: [createdById], references: [id])
+  obligations         SpecialContributionObligation[]
+
+  @@index([type])
+  @@index([status])
+  @@index([dueDate])
+}
+
+model SpecialContributionObligation {
+  id                    String           @id @default(uuid())
+  specialContributionId String
+  memberId              String
+  amount                Decimal          @db.Decimal(12, 2)
+  amountPaid            Decimal          @default(0) @db.Decimal(12, 2)
+  status                ObligationStatus @default(PENDING)
+  isExempt              Boolean          @default(false)
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+
+  specialContribution SpecialContribution @relation(fields: [specialContributionId], references: [id], onDelete: Cascade)
+  member              Member              @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  payments            Payment[]
+  paymentRequests     PaymentRequest[]    @relation("PaymentRequestSpecial")
+
+  @@unique([specialContributionId, memberId])
+  @@index([memberId])
+  @@index([status])
+}
+
+model PublicContent {
+  id        String   @id @default(uuid())
+  slug      String   @unique
+  title     String
+  titleOm   String?
+  content   String   @db.Text
+  contentOm String?  @db.Text
+  sortOrder Int      @default(0)
+  updatedAt DateTime @updatedAt
+}
+
+model PaymentRequest {
+  id                   String          @id @default(uuid())
+  referenceNumber      String          @unique
+  memberId             String
+  obligationId         String?
+  specialContributionObligationId String?
+  amount               Decimal         @db.Decimal(12, 2)
+  paymentProvider      PaymentProvider
+  status               String          @default("PENDING") // PENDING, SUBMITTED, VERIFIED, REJECTED, EXPIRED
+  accountDetails       Json            // { accountName, accountNumber, bankCode }
+  transactionReference String?
+  receiptScreenshot    String?         // URL to uploaded screenshot
+  verificationMethod   String?         // AUTOMATIC, MANUAL
+  verifiedById         String?
+  verificationNotes    String?
+  expiresAt            DateTime
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+
+  member      Member                    @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  obligation  WeeklyObligation?         @relation("PaymentRequestWeekly", fields: [obligationId], references: [id])
+  specialContributionObligation SpecialContributionObligation? @relation("PaymentRequestSpecial", fields: [specialContributionObligationId], references: [id])
+  verifiedBy  User?                     @relation(fields: [verifiedById], references: [id])
+
+  @@index([memberId])
+  @@index([status])
+  @@index([expiresAt])
+  @@index([paymentProvider])
+}
+
+
+
+model JoiningObligation {
+  id                            String   @id @default(uuid())
+  memberId                      String   @unique
+  totalBackContributionAmount   Decimal  @db.Decimal(12, 2)
+  backContributionWeeks         Int
+  amountPaid                    Decimal  @default(0) @db.Decimal(12, 2)
+  status                        String   @default("PENDING") // PENDING, PARTIAL, PAID, WAIVED
+  dueDate                       DateTime
+  createdAt                     DateTime @default(now())
+  updatedAt                     DateTime @updatedAt
+
+  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([dueDate])
+}
+
+model Expense {
+  id             String        @id @default(uuid())
+  expenseId      String        @unique
+  title          String
+  titleOm        String?
+  description    String?
+  category       String        // e.g. EVENT, OFFICE, AID, LOGISTICS, OTHER
+  amount         Decimal       @db.Decimal(12, 2)
+  expenseDate    DateTime      @default(now())
+  paymentMethod  PaymentMethod @default(CASH)
+  recordedById   String
+  receiptUrl     String?
+  approvalStatus String        @default("APPROVED") // PENDING, APPROVED, REJECTED
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  recordedBy User @relation("UserExpenses", fields: [recordedById], references: [id])
+
+  @@index([category])
+  @@index([expenseDate])
+  @@index([approvalStatus])
+}
+
+model Receipt {
+  id            String   @id @default(uuid())
+  receiptNumber String   @unique // e.g. REC-2025-001 or AF-2025-1101
+  paymentId     String?  @unique
+  memberId      String
+  amount        Decimal  @db.Decimal(12, 2)
+  issuedAt      DateTime @default(now())
+  pdfUrl        String?
+  breakdown     Json?    // Detailed breakdown of categories paid
+  paymentMethod String?
+  reference     String?
+
+  member  Member   @relation("MemberReceipts", fields: [memberId], references: [id], onDelete: Cascade)
+  payment Payment? @relation("PaymentReceipt", fields: [paymentId], references: [id])
+
+  @@index([memberId])
+  @@index([issuedAt])
+}
+
+model PaymentAllocation {
+  id                               String   @id @default(uuid())
+  paymentId                        String
+  weeklyObligationId               String?
+  penaltyId                        String?
+  joiningObligationId              String?
+  specialContributionObligationId  String?
+  allocationType                   String   // WEEKLY, PENALTY, MONTHLY_PENALTY, HISTORICAL, SPECIAL, EMERGENCY
+  amount                           Decimal  @db.Decimal(12, 2)
+  createdAt                        DateTime @default(now())
+
+  payment Payment @relation("AllocatedPayments", fields: [paymentId], references: [id], onDelete: Cascade)
+
+  @@index([paymentId])
+  @@index([allocationType])
+}
+
+model YearEndSummary {
+  id                         String   @id @default(uuid())
+  fiscalYear                 Int      @unique
+  openingFunds               Decimal  @db.Decimal(12, 2)
+  totalWeeklyContributions   Decimal  @db.Decimal(12, 2)
+  totalHistoricalCollected   Decimal  @db.Decimal(12, 2)
+  totalPenaltiesCollected    Decimal  @db.Decimal(12, 2)
+  totalSpecialCollected      Decimal  @db.Decimal(12, 2)
+  totalEmergencyCollected    Decimal  @db.Decimal(12, 2)
+  totalOtherIncome           Decimal  @db.Decimal(12, 2)
+  totalExpenses              Decimal  @db.Decimal(12, 2)
+  closingFunds               Decimal  @db.Decimal(12, 2)
+  outstandingReceivables     Decimal  @db.Decimal(12, 2)
+  activeMembersCount         Int
+  inactiveMembersCount       Int
+  attendanceRatePercent      Decimal  @db.Decimal(5, 2)
+  approvedById               String?
+  notes                      String?
+  createdAt                  DateTime @default(now())
+  updatedAt                  DateTime @updatedAt
+
+  approvedBy User? @relation("YearEndApprovals", fields: [approvedById], references: [id])
+
+  @@index([fiscalYear])
+}
+
+model TransactionReversal {
+  id             String   @id @default(uuid())
+  reversalId     String   @unique
+  originalTxId   String
+  reason         String
+  amount         Decimal  @db.Decimal(12, 2)
+  authorizedById String
+  createdAt      DateTime @default(now())
+
+  authorizedBy User @relation("AuthorizedReversals", fields: [authorizedById], references: [id])
+
+  @@index([originalTxId])
+}
+
