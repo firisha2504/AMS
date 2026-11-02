@@ -71,7 +71,14 @@ router.get('/activities', authenticate, authorize('ADMIN', 'AUDITOR'), async (re
       prisma.auditLog.findMany({
         take: 8,
         orderBy: { createdAt: 'desc' },
-        include: { user: { select: { fullName: true, username: true } } },
+        include: {
+          user: {
+            select: {
+              username: true,
+              member: { select: { fullName: true } },
+            },
+          },
+        },
       }),
       prisma.payment.findMany({
         take: 8,
@@ -81,10 +88,10 @@ router.get('/activities', authenticate, authorize('ADMIN', 'AUDITOR'), async (re
     ]);
 
     const activities = [
-      ...recentLogs.map((l) => ({
+      ...recentLogs.map((l: any) => ({
         id: `log-${l.id}`,
         type: l.action.toLowerCase().includes('member') ? 'member' : 'approved',
-        message: `${l.action.replace(/_/g, ' ')} (${l.user?.fullName || l.user?.username || 'System'})`,
+        message: `${l.action.replace(/_/g, ' ')} (${l.user?.member?.fullName || l.user?.username || 'System'})`,
         time: new Date(l.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
         date: l.createdAt,
         icon: l.action.includes('MEMBER') ? 'user-plus' : 'check-circle',

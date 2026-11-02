@@ -603,7 +603,8 @@ router.post('/:id/profile-picture', authenticate, authorize('ADMIN'), upload.sin
     return;
   }
   const profilePicture = `/uploads/${req.file.filename}`;
-  const member = await prisma.member.findUnique({ where: { id: req.params.id } });
+  const memberId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
+  const member = await prisma.member.findUnique({ where: { id: memberId } });
   if (!member) {
     sendError(res, 'member.notFound', lang, 404);
     return;

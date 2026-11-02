@@ -41,7 +41,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get newAlertsWillAppear => 'New alerts will appear here.';
 
-  // Navigation Tabs
   @override
   String get homeTab => 'Home';
 
@@ -57,7 +56,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get profileTab => 'Profile';
 
-  // Payment flow
   @override
   String get payNow => 'Pay Now';
 
@@ -82,7 +80,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get digitalReceipt => 'Digital Receipt';
 
-  // Balances and Categories
   @override
   String get outstandingBalance => 'Outstanding Balance';
 
@@ -104,7 +101,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get historicalContributions => 'Historical Contributions';
 
-  // Actions
   @override
   String get save => 'Save';
 
@@ -126,7 +122,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get back => 'Back';
 
-  // Fields and Statuses
   @override
   String get amount => 'Amount';
 
@@ -154,7 +149,6 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get emptyState => 'No records found';
 
-  // Payment Methods
   @override
   String get telebirr => 'Telebirr';
 

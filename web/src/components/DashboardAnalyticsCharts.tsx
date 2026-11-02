@@ -6,8 +6,7 @@ import {
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend
 } from 'recharts';
 import {
-  Calendar, CheckCircle, AlertTriangle, Clock,
-  ArrowUpRight, Users, DollarSign, Activity, FileText, Download, Filter
+  Calendar, Users, DollarSign, Activity, FileText, Download, Filter
 } from 'lucide-react';
 
 interface AnalyticsProps {
@@ -25,7 +24,7 @@ export default function DashboardAnalyticsCharts({
   memberData,
   meetingData,
   onAttendanceFilterChange,
-  isAuditor = false,
+  isAuditor: _isAuditor = false,
 }: AnalyticsProps) {
   const { i18n } = useTranslation();
   const isOm = i18n.language === 'om';

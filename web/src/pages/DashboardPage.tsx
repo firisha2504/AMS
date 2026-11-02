@@ -7,7 +7,7 @@ import {
   UserCheck, CheckCircle,
   ArrowUpRight, FileText, Gift,
   Bell, Shield, Check, Wallet, Smartphone,
-  Building, Download
+  Building, Download, Activity as ActivityIcon
 } from 'lucide-react';
 import { 
   BarChart, Bar, PieChart, Pie, Cell,
@@ -79,7 +79,7 @@ interface MemberData {
   attendancePercentage: number;
 }
 
-interface Activity {
+interface DashboardActivityItem {
   id: string;
   type: string;
   message: string;
@@ -102,7 +102,7 @@ export default function DashboardPage() {
   const [memberAnalytics, setMemberAnalytics] = useState<any>(null);
   const [meetingAnalytics, setMeetingAnalytics] = useState<any>(null);
   const [personalAnalytics, setPersonalAnalytics] = useState<any>(null);
-  const [activities, setActivities] = useState<Activity[]>([]);
+  const [activities, setActivities] = useState<DashboardActivityItem[]>([]);
 
   // Payment Modal State
   const [showPaymentModal, setShowPaymentModal] = useState(false);
@@ -202,10 +202,10 @@ export default function DashboardPage() {
   // ==========================================
   if (user?.role === 'MEMBER') {
     const mem: MemberData = memberData || {
-      fullName: user?.fullName || 'Member',
-      memberId: user?.memberId || 'MEM-000',
-      status: user?.status || 'APPROVED',
-      profilePicture: user?.profilePicture || undefined,
+      fullName: user?.member?.fullName || user?.username || 'Member',
+      memberId: user?.member?.memberId || 'MEM-000',
+      status: user?.member?.status || 'APPROVED',
+      profilePicture: undefined,
       totalCredit: 0,
       dueThisSaturday: 0,
       totalPenalties: 0,
@@ -993,7 +993,7 @@ export default function DashboardPage() {
             </div>
           ) : (
             <div className="py-8 text-center text-gray-400 text-xs">
-              <Activity size={24} className="mx-auto mb-1 text-gray-300" />
+              <ActivityIcon size={24} className="mx-auto mb-1 text-gray-300" />
               <p>No operational activities recorded yet</p>
             </div>
           )}

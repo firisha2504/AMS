@@ -21,10 +21,10 @@ class AppLocalizationsOm extends AppLocalizations {
   String get profile => 'Profaayilii';
 
   @override
-  String get contributions => 'Kaffaltii';
+  String get contributions => 'Kaffaltiiwwan';
 
   @override
-  String get notifications => 'Beeksisa';
+  String get notifications => 'Beeksisawwan';
 
   @override
   String get logout => 'Ba\'i';
@@ -39,9 +39,8 @@ class AppLocalizationsOm extends AppLocalizations {
   String get allCaughtUp => 'Hundumaa dubbistaniirtu!';
 
   @override
-  String get newAlertsWillAppear => 'Beeksisni haaraan asitti mul\'atu.';
+  String get newAlertsWillAppear => 'Beeksisni haaraan asitti mul\'ata.';
 
-  // Navigation Tabs
   @override
   String get homeTab => 'Mana';
 
@@ -57,7 +56,6 @@ class AppLocalizationsOm extends AppLocalizations {
   @override
   String get profileTab => 'Profaayilii';
 
-  // Payment flow
   @override
   String get payNow => 'Amma Kaffali';
 
@@ -82,7 +80,6 @@ class AppLocalizationsOm extends AppLocalizations {
   @override
   String get digitalReceipt => 'Nagahee Dijitaalaa';
 
-  // Balances and Categories
   @override
   String get outstandingBalance => 'Hafe Kaffalamuu';
 
@@ -104,7 +101,6 @@ class AppLocalizationsOm extends AppLocalizations {
   @override
   String get historicalContributions => 'Seenaa Hirmaataa';
 
-  // Actions
   @override
   String get save => 'Olkaa\'i';
 
@@ -126,7 +122,6 @@ class AppLocalizationsOm extends AppLocalizations {
   @override
   String get back => 'Duubatti';
 
-  // Fields and Statuses
   @override
   String get amount => 'Hanga';
 
@@ -154,7 +149,6 @@ class AppLocalizationsOm extends AppLocalizations {
   @override
   String get emptyState => 'Galmeen hin argamne';
 
-  // Payment Methods
   @override
   String get telebirr => 'Telebirr';
 
