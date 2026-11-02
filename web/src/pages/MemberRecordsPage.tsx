@@ -13,10 +13,16 @@ export default function MemberRecordsPage() {
   const [activeTab, setActiveTab] = useState<Tab>('contributions');
 
   const tabs = [
-    { id: 'contributions' as Tab, label: 'Weekly Contributions', icon: Calendar, color: 'blue' },
-    { id: 'payments' as Tab, label: 'Payments', icon: Wallet, color: 'green' },
-    { id: 'joining' as Tab, label: 'Joining Obligations', icon: UserPlus, color: 'purple' },
+    { id: 'contributions' as Tab, label: 'Weekly Contributions', icon: Calendar },
+    { id: 'payments' as Tab, label: 'Payments', icon: Wallet },
+    { id: 'joining' as Tab, label: 'Joining Obligations', icon: UserPlus },
   ];
+
+  const tabStyles: Record<Tab, { active: string; icon: string }> = {
+    contributions: { active: 'border-blue-500 text-blue-600 bg-blue-50/30', icon: 'text-blue-500' },
+    payments: { active: 'border-emerald-500 text-emerald-600 bg-emerald-50/30', icon: 'text-emerald-500' },
+    joining: { active: 'border-purple-500 text-purple-600 bg-purple-50/30', icon: 'text-purple-500' },
+  };
 
   return (
     <div>
@@ -32,13 +38,13 @@ export default function MemberRecordsPage() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 px-6 py-4 font-medium border-b-2 transition-colors whitespace-nowrap ${
+                className={`flex items-center gap-2 px-6 py-4 font-semibold border-b-2 transition-colors whitespace-nowrap ${
                   isActive
-                    ? `border-${tab.color}-500 text-${tab.color}-600`
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    ? tabStyles[tab.id].active
+                    : 'border-transparent text-gray-500 hover:text-gray-800 hover:border-gray-300'
                 }`}
               >
-                <Icon size={20} />
+                <Icon size={20} className={isActive ? tabStyles[tab.id].icon : 'text-gray-400'} />
                 {tab.label}
               </button>
             );

@@ -40,4 +40,130 @@ class AppLocalizationsOm extends AppLocalizations {
 
   @override
   String get newAlertsWillAppear => 'Beeksisni haaraan asitti mul\'atu.';
+
+  // Navigation Tabs
+  @override
+  String get homeTab => 'Mana';
+
+  @override
+  String get paymentsTab => 'Kaffaltiiwwan';
+
+  @override
+  String get historyTab => 'Seenaa';
+
+  @override
+  String get notificationsTab => 'Beeksisawwan';
+
+  @override
+  String get profileTab => 'Profaayilii';
+
+  // Payment flow
+  @override
+  String get payNow => 'Amma Kaffali';
+
+  @override
+  String get selectPaymentMethod => 'Mala Kaffaltii Filadhu';
+
+  @override
+  String get paymentConfirmation => 'Mirkaneessa Kaffaltii';
+
+  @override
+  String get processingPayment => 'Kaffaltiin adeemsifamaa jira...';
+
+  @override
+  String get paymentSuccess => 'Kaffaltiin Milkaa\'eera';
+
+  @override
+  String get paymentFailed => 'Kaffaltiin Hin Milkoofne';
+
+  @override
+  String get transactionDetails => 'Bal\'ina Daldalaa';
+
+  @override
+  String get digitalReceipt => 'Nagahee Dijitaalaa';
+
+  // Balances and Categories
+  @override
+  String get outstandingBalance => 'Hafe Kaffalamuu';
+
+  @override
+  String get totalAmountPaid => 'Waliigala Kaffaltii Kaffalame';
+
+  @override
+  String get weeklyContributions => 'Kaffaltii Torbanii';
+
+  @override
+  String get penalties => 'Adabbii';
+
+  @override
+  String get specialContributions => 'Gumaacha Addaa';
+
+  @override
+  String get emergencyContributions => 'Gumaacha Hatattamaa';
+
+  @override
+  String get historicalContributions => 'Seenaa Hirmaataa';
+
+  // Actions
+  @override
+  String get save => 'Olkaa\'i';
+
+  @override
+  String get cancel => 'Dhiisi';
+
+  @override
+  String get submit => 'Galchi';
+
+  @override
+  String get tryAgain => 'Irra Deebi\'i Yaali';
+
+  @override
+  String get done => 'Xumurame';
+
+  @override
+  String get close => 'Cufi';
+
+  @override
+  String get back => 'Duubatti';
+
+  // Fields and Statuses
+  @override
+  String get amount => 'Hanga';
+
+  @override
+  String get date => 'Guyyaa';
+
+  @override
+  String get referenceNumber => 'Lakkoofsa Daldalaa';
+
+  @override
+  String get status => 'Haala';
+
+  @override
+  String get verified => 'Mirkanaa\'e';
+
+  @override
+  String get pending => 'Eegaa Jira';
+
+  @override
+  String get requiredField => 'Dirree kana guutuun dirqama';
+
+  @override
+  String get invalidAmount => 'Maaloo hanga sirrii galchaa';
+
+  @override
+  String get emptyState => 'Galmeen hin argamne';
+
+  // Payment Methods
+  @override
+  String get telebirr => 'Telebirr';
+
+  @override
+  String get cbe => 'CBE Birr';
+
+  @override
+  String get bankTransfer => 'Dabarsa Baankii';
+
+  @override
+  String get cash => 'Kaashii (Waajjira)';
 }

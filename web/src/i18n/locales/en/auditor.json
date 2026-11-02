@@ -1,0 +1,21 @@
+{
+  "auditor": {
+    "title": "Auditor Dashboard",
+    "readOnlyNotice": "Read-Only Audit Mode Enabled",
+    "categoryOverview": "Auditor Oversight: All 7 Payment Categories",
+    "categorySubtitle": "Verified collection, outstanding obligations, and audit allocation breakdown",
+    "financialInspection": "Financial Inspection & Ledger Oversight",
+    "verifiedLedger": "Verified Ledger Entries",
+    "exportAuditReport": "Export Audit Report",
+    "memberPaymentOverview": "Member Payment Overview",
+    "paidRatio": "Collection Ratio",
+    "recentTransactions": "Recent Verified Transactions",
+    "reports": {
+      "financialReport": "Financial Report",
+      "attendanceReport": "Attendance Report",
+      "penaltyReport": "Penalty Report",
+      "exportPdf": "Export as PDF",
+      "exportExcel": "Export as Excel"
+    }
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "penalties": {
+    "title": "Penalty Management",
+    "totalPenalties": "Total Penalties",
+    "weeklyPenalty": "Weekly Penalty",
+    "monthlyPenalty": "Monthly Penalty (4 Weeks)",
+    "otherPenalty": "Other Penalty",
+    "outstanding": "Outstanding Balance",
+    "settled": "Settled / Paid",
+    "waived": "Waived",
+    "pay": "Pay",
+    "waive": "Waive",
+    "payPenalty": "Pay Penalty",
+    "waivePenalty": "Waive Penalty",
+    "penalty": "Penalty",
+    "week": "Week",
+    "year": "Year",
+    "reason": "Reason",
+    "type": "Type",
+    "status": "Status",
+    "date": "Date",
+    "paidDate": "Date Paid",
+    "actions": "Actions",
+    "selectMember": "Select Member",
+    "allPenalties": "All Penalties",
+    "waiveReason": "Reason for Waiving (Required)",
+    "enterReason": "Enter reason for waiving this penalty...",
+    "ruleExplanation": "Penalty Rules: 50 ETB for 1st missed Saturday; 100 ETB additional monthly penalty for 4 consecutive missed Saturdays.",
+    "noPenalties": "No penalties recorded",
+    "paymentSuccess": "Penalty payment processed successfully!",
+    "waiveSuccess": "Penalty waived successfully!"
+  }
+}

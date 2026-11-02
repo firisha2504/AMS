@@ -1,0 +1,30 @@
+{
+  "admin": {
+    "title": "Admin Dashboard",
+    "settings": "System Settings",
+    "backup": "Backup & Restore",
+    "teamManagement": "Team & Role Management",
+    "publicContent": "Public Content Management",
+    "smsManagement": "SMS Management",
+    "rateHistory": "Contribution Rate History",
+    "auditLogs": "Audit Logs & Activity",
+    "financialLedger": "Financial Ledger",
+    "categoryOverview": "All 7 Payment Categories Overview (Admin)",
+    "categorySubtitle": "Real-time financial status, progress, and obligation counts per category",
+    "backupNow": "Create Backup Now",
+    "restore": "Restore",
+    "rates": {
+      "weeklyRate": "Weekly Contribution Rate",
+      "weeklyPenaltyRate": "Weekly Penalty Rate",
+      "monthlyPenaltyRate": "Monthly Penalty Rate",
+      "graduationRate": "Graduation Contribution Rate",
+      "bereavementRate": "Bereavement Contribution Rate"
+    },
+    "sms": {
+      "sendSMS": "Send SMS",
+      "template": "Message Template",
+      "recipients": "Recipients",
+      "sentSuccessfully": "SMS sent successfully"
+    }
+  }
+}

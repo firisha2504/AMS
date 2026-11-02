@@ -419,11 +419,11 @@ function InfoRow({ icon: Icon, label, value }: { icon: React.ElementType; label:
   return (
     <div className="flex items-start gap-3 p-3 bg-slate-50 rounded-xl">
       <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center shadow-sm shrink-0">
-        <Icon size={14} className="text-slate-400" />
+        <Icon size={15} className="text-slate-600" />
       </div>
       <div className="min-w-0">
-        <p className="text-xs text-slate-400 font-medium">{label}</p>
-        <p className="text-sm text-slate-800 font-medium truncate">{value}</p>
+        <p className="text-xs text-slate-600 font-semibold">{label}</p>
+        <p className="text-sm text-slate-900 font-medium truncate">{value}</p>
       </div>
     </div>
   );

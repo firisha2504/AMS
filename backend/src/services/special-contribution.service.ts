@@ -10,7 +10,8 @@ export async function createGraduationContribution(
   beneficiaryMemberId: string,
   familyRelationship: FamilyRelationship,
   createdById: string,
-  dueDate?: Date
+  dueDate?: Date,
+  targetMemberIds?: string[]
 ) {
   const amount = await getNumericSetting('graduation_contribution', 100);
   const beneficiary = await prisma.member.findUnique({ where: { id: beneficiaryMemberId } });
@@ -28,6 +29,7 @@ export async function createGraduationContribution(
     familyRelationship,
     createdById,
     dueDate,
+    targetMemberIds,
   });
 }
 
@@ -35,7 +37,8 @@ export async function createBereavementContribution(
   beneficiaryMemberId: string,
   familyRelationship: FamilyRelationship,
   createdById: string,
-  dueDate?: Date
+  dueDate?: Date,
+  targetMemberIds?: string[]
 ) {
   const amount = await getNumericSetting('bereavement_contribution', 100);
   const beneficiary = await prisma.member.findUnique({ where: { id: beneficiaryMemberId } });
@@ -53,6 +56,7 @@ export async function createBereavementContribution(
     familyRelationship,
     createdById,
     dueDate,
+    targetMemberIds,
   });
 }
 

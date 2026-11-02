@@ -1,10 +1,13 @@
 import { Router, Response } from 'express';
 import prisma from '../config/database.js';
 import { AuthRequest, authenticate, authorize } from '../middleware/auth.js';
-import { validateBody, validateQuery } from '../middleware/validate.js';
-import { createAuditEntry } from '../middleware/audit.js';
-import { updateSettingsSchema, paginationSchema } from '../validators/schemas.js';
+import { validateQuery } from '../middleware/validate.js';
+import { paginationSchema } from '../validators/schemas.js';
 import { sendSuccess, sendError } from '../utils/response.js';
+import {
+  getOrganizationFinancialSummary,
+  getMemberFinancialSummary,
+} from '../services/financial-calculator.service.js';
 
 const router = Router();
 
@@ -12,48 +15,44 @@ router.get('/admin', authenticate, authorize('ADMIN'), async (req: AuthRequest, 
   const lang = req.lang || 'om';
 
   try {
-    // Use aggregation instead of fetching all records - much faster
-    const [
-      totalMembers,
-      activeMembers,
-      pendingMembers,
-      unpaidPenalties,
-      paidPenalties,
-      outstandingBalance,
-      specialContributions,
-      weeklyContributionsAgg,
-    ] = await Promise.all([
-      prisma.member.count(),
-      prisma.member.count({ where: { status: 'APPROVED' } }),
-      prisma.member.count({ where: { status: 'PENDING' } }),
-      prisma.penalty.aggregate({ where: { status: 'OUTSTANDING' }, _sum: { amount: true } }),
-      prisma.penalty.aggregate({ where: { status: 'SETTLED' }, _sum: { amount: true } }),
-      prisma.member.aggregate({ _sum: { outstandingBalance: true } }),
-      prisma.specialContributionObligation.aggregate({
-        where: { status: 'PAID' },
-        _sum: { amountPaid: true },
-      }),
-      // Aggregate verified payments for weekly contributions
-      prisma.payment.aggregate({
-        where: { 
-          status: 'VERIFIED',
-          specialContributionObligationId: null,
-        },
-        _sum: { amount: true },
-      }),
-    ]);
+    const summary = await getOrganizationFinancialSummary();
 
     sendSuccess(
       res,
       {
-        totalMembers,
-        activeMembers,
-        pendingMembers,
-        weeklyContributions: weeklyContributionsAgg._sum.amount || 0,
-        unpaidPenalties: unpaidPenalties._sum.amount || 0,
-        paidPenalties: paidPenalties._sum.amount || 0,
-        totalOutstandingBalance: outstandingBalance._sum.outstandingBalance || 0,
-        totalSpecialContributions: specialContributions._sum.amountPaid || 0,
+        totalMembers: summary.totalMembers,
+        activeMembers: summary.activeMembers,
+        pendingMembers: summary.pendingMembers,
+        paidMembersCount: summary.paidMembersCount,
+        unpaidMembersCount: summary.unpaidMembersCount,
+        pendingPaymentRequestsCount: summary.pendingPaymentRequestsCount,
+        // Verified actual cash funds & expenses
+        totalConfirmedIncome: summary.totalConfirmedIncome,
+        totalExpenses: summary.totalExpenses,
+        availableActualFunds: summary.availableActualFunds,
+        // Receivables (strictly separated from actual cash)
+        totalOutstandingReceivables: summary.totalOutstandingReceivables,
+        totalOutstandingBalance: summary.totalOutstandingReceivables, // Backwards compatibility for existing dashboard cards
+        // Collections by category
+        weeklyContributions: summary.weeklyContributionsCollected,
+        weeklyContributionsCollected: summary.weeklyContributionsCollected,
+        totalPenalties: summary.penaltiesCollected,
+        penaltiesCollected: summary.penaltiesCollected,
+        weeklyPenaltiesCollected: summary.weeklyPenaltiesCollected,
+        monthlyPenaltiesCollected: summary.monthlyPenaltiesCollected,
+        otherPenaltiesCollected: summary.otherPenaltiesCollected,
+        totalSpecialContributions: summary.specialContributionsCollected,
+        specialContributionsCollected: summary.specialContributionsCollected,
+        emergencyContributionsCollected: summary.emergencyContributionsCollected,
+        historicalContributionsCollected: summary.historicalContributionsCollected,
+        // Receivables by category
+        weeklyContributionsReceivable: summary.weeklyContributionsReceivable,
+        unpaidPenalties: summary.penaltiesReceivable,
+        penaltiesReceivable: summary.penaltiesReceivable,
+        specialContributionsReceivable: summary.specialContributionsReceivable,
+        emergencyContributionsReceivable: summary.emergencyContributionsReceivable,
+        historicalContributionsReceivable: summary.historicalContributionsReceivable,
+        categoryMetrics: summary.categoryMetrics,
       },
       'general.success',
       lang
@@ -64,23 +63,71 @@ router.get('/admin', authenticate, authorize('ADMIN'), async (req: AuthRequest, 
   }
 });
 
-// Get consolidated history/logs
+// Live operational activities feed from actual audit logs and payments
+router.get('/activities', authenticate, authorize('ADMIN', 'AUDITOR'), async (req: AuthRequest, res: Response) => {
+  const lang = req.lang || 'om';
+  try {
+    const [recentLogs, recentPayments] = await Promise.all([
+      prisma.auditLog.findMany({
+        take: 8,
+        orderBy: { createdAt: 'desc' },
+        include: { user: { select: { fullName: true, username: true } } },
+      }),
+      prisma.payment.findMany({
+        take: 8,
+        orderBy: { createdAt: 'desc' },
+        include: { member: { select: { fullName: true } } },
+      }),
+    ]);
+
+    const activities = [
+      ...recentLogs.map((l) => ({
+        id: `log-${l.id}`,
+        type: l.action.toLowerCase().includes('member') ? 'member' : 'approved',
+        message: `${l.action.replace(/_/g, ' ')} (${l.user?.fullName || l.user?.username || 'System'})`,
+        time: new Date(l.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+        date: l.createdAt,
+        icon: l.action.includes('MEMBER') ? 'user-plus' : 'check-circle',
+      })),
+      ...recentPayments.map((p) => ({
+        id: `pay-${p.id}`,
+        type: 'payment',
+        message: `Payment received (${p.member?.fullName || 'Member'} - ${Number(p.amount)} ETB)`,
+        time: new Date(p.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
+        date: p.createdAt,
+        icon: 'check',
+      })),
+    ]
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      .slice(0, 8);
+
+    sendSuccess(res, activities, 'general.success', lang);
+  } catch (error) {
+    console.error('Activities endpoint error:', error);
+    sendError(res, 'general.error', lang, 500);
+  }
+});
+
+// Consolidated history/logs
 router.get('/history', authenticate, authorize('ADMIN', 'AUDITOR'), validateQuery(paginationSchema), async (req: AuthRequest, res: Response) => {
   const lang = req.lang || 'om';
   const { page, limit } = req.validatedQuery as { page: number; limit: number };
 
   try {
-    const [payments, specialContributions, attendanceRecords] = await Promise.all([
+    const [payments, specialContributions, attendanceRecords, auditEntries] = await Promise.all([
       prisma.payment.findMany({
         include: {
           member: { select: { fullName: true, memberId: true } },
           recordedBy: { select: { username: true } },
           verifiedBy: { select: { username: true } },
           obligation: { select: { weekNumber: true, year: true } },
+          penalty: { select: { reason: true, weekNumber: true, isMonthly: true } },
           specialContributionObligation: { select: { specialContribution: { select: { title: true } } } },
+          allocations: true,
         },
         orderBy: { paymentDate: 'desc' },
-        take: limit * page,
+        skip: (page - 1) * limit,
+        take: limit,
       }),
       prisma.specialContribution.findMany({
         include: {
@@ -89,7 +136,8 @@ router.get('/history', authenticate, authorize('ADMIN', 'AUDITOR'), validateQuer
           _count: { select: { obligations: true } },
         },
         orderBy: { createdAt: 'desc' },
-        take: limit * page,
+        skip: (page - 1) * limit,
+        take: limit,
       }),
       prisma.attendance.findMany({
         include: {
@@ -98,26 +146,34 @@ router.get('/history', authenticate, authorize('ADMIN', 'AUDITOR'), validateQuer
           meeting: { select: { meetingDate: true, title: true } },
         },
         orderBy: { createdAt: 'desc' },
-        take: limit * page,
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      prisma.auditLog.findMany({
+        include: { user: { select: { username: true, role: true } } },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
       }),
     ]);
 
-    // Initialize empty arrays for tables that might not exist
-    const ledgerEntries: any[] = [];
-    const auditEntries: any[] = [];
+    const [totalPayments, totalSpecial, totalAttendance, totalAudit] = await Promise.all([
+      prisma.payment.count(),
+      prisma.specialContribution.count(),
+      prisma.attendance.count(),
+      prisma.auditLog.count(),
+    ]);
 
     sendSuccess(res, {
-      payments: payments.slice((page - 1) * limit, page * limit),
-      ledgerEntries: ledgerEntries.slice((page - 1) * limit, page * limit),
-      auditEntries: auditEntries.slice((page - 1) * limit, page * limit),
-      specialContributions: specialContributions.slice((page - 1) * limit, page * limit),
-      attendanceRecords: attendanceRecords.slice((page - 1) * limit, page * limit),
+      payments,
+      auditEntries,
+      specialContributions,
+      attendanceRecords,
       totals: {
-        payments: payments.length,
-        ledgerEntries: ledgerEntries.length,
-        auditEntries: auditEntries.length,
-        specialContributions: specialContributions.length,
-        attendanceRecords: attendanceRecords.length,
+        payments: totalPayments,
+        auditEntries: totalAudit,
+        specialContributions: totalSpecial,
+        attendanceRecords: totalAttendance,
       },
     }, 'general.success', lang, 200, { page, limit });
   } catch (error) {
@@ -130,38 +186,41 @@ router.get('/auditor', authenticate, authorize('AUDITOR', 'ADMIN'), async (req: 
   const lang = req.lang || 'om';
 
   try {
-    const [
-      totalMembers,
-      totalPaidCount,
-      totalDueCount,
-      totalIncomeAgg,
-      totalPenaltiesAgg,
-      recentPayments,
-    ] = await Promise.all([
-      prisma.member.count({ where: { status: 'APPROVED' } }),
-      prisma.weeklyObligation.count({ where: { status: 'PAID' } }),
-      prisma.weeklyObligation.count({ where: { status: { in: ['PENDING', 'OVERDUE', 'PARTIAL'] } } }),
-      prisma.payment.aggregate({ where: { status: 'VERIFIED' }, _sum: { amount: true } }),
-      prisma.penalty.aggregate({ where: { status: 'OUTSTANDING' }, _sum: { amount: true } }),
-      prisma.payment.findMany({
-        take: 10,
-        orderBy: { paymentDate: 'desc' },
-        include: { member: { select: { fullName: true, memberId: true } } },
-      }),
-    ]);
+    const summary = await getOrganizationFinancialSummary();
 
-    const totalIncome = Number(totalIncomeAgg._sum.amount || 0);
-    const paidPercentage = totalMembers > 0 ? Math.min(100, Math.round(((totalPaidCount || 1) / Math.max(1, (totalPaidCount + totalDueCount))) * 100)) : 85.5;
+    const recentPayments = await prisma.payment.findMany({
+      where: { status: 'VERIFIED' },
+      take: 10,
+      orderBy: { paymentDate: 'desc' },
+      include: {
+        member: { select: { fullName: true, memberId: true } },
+        allocations: true,
+      },
+    });
+
+    const totalMembers = summary.totalMembers;
+    const paidPercentage = totalMembers > 0
+      ? Math.min(100, Math.round((summary.paidMembersCount / Math.max(1, totalMembers)) * 100))
+      : 100;
 
     sendSuccess(
       res,
       {
-        totalMembers: totalMembers || 248,
-        totalPaid: totalPaidCount || 212,
-        totalDue: totalDueCount || 36,
-        totalAmount: totalIncome || 158750,
+        totalMembers: summary.totalMembers,
+        totalPaid: summary.paidMembersCount,
+        totalDue: summary.unpaidMembersCount,
+        totalAmount: summary.totalConfirmedIncome,
+        totalExpenses: summary.totalExpenses,
+        availableActualFunds: summary.availableActualFunds,
+        totalReceivables: summary.totalOutstandingReceivables,
         paidPercentage,
         unpaidPercentage: 100 - paidPercentage,
+        weeklyContributions: summary.weeklyContributionsCollected,
+        penaltiesCollected: summary.penaltiesCollected,
+        specialContributions: summary.specialContributionsCollected,
+        emergencyContributions: summary.emergencyContributionsCollected,
+        historicalContributions: summary.historicalContributionsCollected,
+        categoryMetrics: summary.categoryMetrics,
         recentTransactions: recentPayments.map((p) => ({
           id: p.id,
           date: p.paymentDate.toISOString().split('T')[0],
@@ -185,13 +244,15 @@ router.get('/member', authenticate, authorize('MEMBER'), async (req: AuthRequest
   const lang = req.lang || 'om';
   const member = await prisma.member.findUnique({
     where: { userId: req.user!.userId },
-    include: {
-      penalties: { where: { status: 'OUTSTANDING' }, take: 5 },
-      obligations: { where: { status: { in: ['PENDING', 'OVERDUE'] } }, take: 5 },
-    },
   });
 
   if (!member) {
+    sendSuccess(res, null, 'general.notFound', lang, 404);
+    return;
+  }
+
+  const memberSummary = await getMemberFinancialSummary(member.id);
+  if (!memberSummary) {
     sendSuccess(res, null, 'general.notFound', lang, 404);
     return;
   }
@@ -200,20 +261,15 @@ router.get('/member', authenticate, authorize('MEMBER'), async (req: AuthRequest
   const present = attendance.filter((a) => a.status === 'PRESENT').length;
   const attendancePercentage = attendance.length > 0 ? Math.round((present / attendance.length) * 100) : 0;
 
-  // Calculate total amount paid (verified payments only)
   const paidPayments = await prisma.payment.findMany({
     where: { memberId: member.id, status: 'VERIFIED' },
     orderBy: { paymentDate: 'desc' },
     take: 10,
     include: {
-      obligation: { select: { contributionAmount: true } },
+      receipt: true,
+      allocations: true,
     },
   });
-
-  let totalAmountPaid = 0;
-  for (const payment of paidPayments) {
-    totalAmountPaid += Number(payment.amount);
-  }
 
   const upcomingMeetings = await prisma.meeting.findMany({
     where: { meetingDate: { gte: new Date() } },
@@ -221,28 +277,47 @@ router.get('/member', authenticate, authorize('MEMBER'), async (req: AuthRequest
     orderBy: { meetingDate: 'asc' },
   });
 
-  // Next Saturday calculation
   const nextSat = new Date();
   nextSat.setDate(nextSat.getDate() + ((6 - nextSat.getDay() + 7) % 7));
 
   sendSuccess(
     res,
     {
-      // Member identity
       fullName: member.fullName,
       memberId: member.memberId,
       status: member.status,
       profilePicture: member.profilePicture,
       joinDate: member.joinDate,
-      // Financial
-      totalAmountPaid: totalAmountPaid || 2400,
-      totalCredit: Number(member.totalCredit) || 150,
+      // Verified financial calculations (NO hardcoded fake numbers)
+      totalAmountPaid: memberSummary.totalAmountPaid,
+      totalCredit: memberSummary.totalCredit,
+      outstandingBalance: memberSummary.totalOutstandingBalance,
+      totalPenalties: memberSummary.penaltiesOutstanding,
       dueThisSaturday: 50,
       nextSaturdayDate: nextSat.toISOString().split('T')[0],
-      outstandingBalance: Number(member.outstandingBalance) || 100,
-      totalPenalties: member.penalties.reduce((s, p) => s + Number(p.amount), 0) || 50,
-      penalties: member.penalties,
-      obligations: member.obligations,
+      // Categories Paid
+      weeklyPaid: memberSummary.weeklyPaid,
+      penaltiesPaid: memberSummary.penaltiesPaid,
+      specialPaid: memberSummary.specialPaid,
+      emergencyPaid: memberSummary.emergencyPaid,
+      historicalPaid: memberSummary.historicalPaid,
+      // Categories Outstanding
+      weeklyOutstanding: memberSummary.weeklyOutstanding,
+      penaltiesOutstanding: memberSummary.penaltiesOutstanding,
+      weeklyPenaltiesOutstanding: memberSummary.weeklyPenaltiesOutstanding,
+      monthlyPenaltiesOutstanding: memberSummary.monthlyPenaltiesOutstanding,
+      otherPenaltiesOutstanding: memberSummary.otherPenaltiesOutstanding,
+      specialOutstanding: memberSummary.specialOutstanding,
+      emergencyOutstanding: memberSummary.emergencyOutstanding,
+      historicalOutstanding: memberSummary.historicalOutstanding,
+      // 7 Category Metrics
+      categoryMetrics: memberSummary.categoryMetrics,
+      // Detailed arrays
+      penalties: memberSummary.penalties,
+      obligations: memberSummary.weeklyObligations,
+      specialObligations: memberSummary.specialObligations,
+      emergencyObligations: memberSummary.emergencyObligations,
+      historicalObligation: memberSummary.historicalObligation,
       recentPayments: paidPayments.map((p) => ({
         id: p.id,
         date: p.paymentDate.toISOString().split('T')[0],
@@ -251,9 +326,7 @@ router.get('/member', authenticate, authorize('MEMBER'), async (req: AuthRequest
         status: p.status,
         receiptNumber: p.receiptNumber,
       })),
-      // Attendance
       attendancePercentage,
-      // Upcoming
       upcomingMeetings,
     },
     'general.success',
@@ -265,55 +338,58 @@ router.get('/charts', authenticate, authorize('ADMIN'), async (req: AuthRequest,
   const lang = req.lang || 'om';
   
   try {
-    const months: { month: string; contributions: number; penalties: number }[] = [];
+    const trends = [];
 
     for (let i = 5; i >= 0; i--) {
       const d = new Date();
       d.setMonth(d.getMonth() - i);
       const start = new Date(d.getFullYear(), d.getMonth(), 1);
-      const end = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+      const end = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59);
 
-      // Use aggregation for faster queries instead of fetching all records
-      const [verifiedPaymentsAgg, settledPenalties] = await Promise.all([
-        prisma.payment.aggregate({
-          where: { paymentDate: { gte: start, lte: end }, status: 'VERIFIED' },
+      const [weeklyAgg, penaltyAgg, specialAgg] = await Promise.all([
+        prisma.paymentAllocation.aggregate({
+          where: {
+            allocationType: 'WEEKLY',
+            payment: { status: 'VERIFIED', paymentDate: { gte: start, lte: end } },
+          },
           _sum: { amount: true },
         }),
-        prisma.penalty.aggregate({
-          where: { 
-            status: 'SETTLED',
-            paidAt: { gte: start, lte: end },
+        prisma.paymentAllocation.aggregate({
+          where: {
+            allocationType: { in: ['PENALTY', 'MONTHLY_PENALTY', 'OTHER_PENALTY'] },
+            payment: { status: 'VERIFIED', paymentDate: { gte: start, lte: end } },
+          },
+          _sum: { amount: true },
+        }),
+        prisma.paymentAllocation.aggregate({
+          where: {
+            allocationType: { in: ['SPECIAL', 'EMERGENCY'] },
+            payment: { status: 'VERIFIED', paymentDate: { gte: start, lte: end } },
           },
           _sum: { amount: true },
         }),
       ]);
 
-      // Approximate: assume verified payments are ~70% contributions, ~30% penalties
-      // This is faster than fetching all records and calculating per-payment
-      const totalPayments = Number(verifiedPaymentsAgg._sum.amount || 0);
-      const estimatedContributions = Math.round(totalPayments * 0.7);
-      const estimatedPenaltiesInPayments = Math.round(totalPayments * 0.3);
-
-      months.push({
+      trends.push({
         month: start.toLocaleString('en', { month: 'short' }),
-        contributions: estimatedContributions,
-        penalties: estimatedPenaltiesInPayments + Number(settledPenalties._sum.amount || 0),
+        contributions: Number(weeklyAgg._sum.amount || 0),
+        penalties: Number(penaltyAgg._sum.amount || 0),
+        special: Number(specialAgg._sum.amount || 0),
       });
     }
 
-    sendSuccess(res, { trends: months }, 'general.success', lang);
+    sendSuccess(res, { trends }, 'general.success', lang);
   } catch (error) {
     console.error('Charts endpoint error:', error);
     sendError(res, 'general.error', lang, 500);
   }
 });
 
-// Get attendance trends
+// Attendance trends
 router.get('/attendance-trends', authenticate, authorize('ADMIN'), async (req: AuthRequest, res: Response) => {
   const lang = req.lang || 'om';
   
   try {
-    // Get attendance records from last 6 weeks
     const sixWeeksAgo = new Date();
     sixWeeksAgo.setDate(sixWeeksAgo.getDate() - 42);
 
@@ -326,7 +402,6 @@ router.get('/attendance-trends', authenticate, authorize('ADMIN'), async (req: A
       },
     });
 
-    // Group by week and calculate percentage
     const weeks: { [key: number]: { present: number; total: number; week: number } } = {};
 
     for (let i = 0; i < 6; i++) {
@@ -345,7 +420,6 @@ router.get('/attendance-trends', authenticate, authorize('ADMIN'), async (req: A
       }
     });
 
-    // Convert to array and calculate percentages
     const trends = Object.values(weeks)
       .sort((a, b) => a.week - b.week)
       .map((w) => ({

@@ -78,11 +78,10 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
           {/* Desktop Nav links */}
           <nav className="hidden lg:flex items-center gap-1">
             {[
-              { to: '/', label: isOm ? 'Home' : 'Home' },
-              { to: '/about', label: isOm ? 'About' : 'About' },
-              { to: '/about#heera-danbii', label: isOm ? 'Laws & Regulations' : 'Laws & Regulations' },
-              { to: '/about#contact', label: isOm ? 'Payment' : 'Payment' },
-              { to: '/about#contact', label: isOm ? 'Contact' : 'Contact' },
+              { to: '/', label: isOm ? 'Mana' : 'Home' },
+              { to: '/about', label: isOm ? "Waa'ee Keenya" : 'About' },
+              { to: '/payment', label: isOm ? 'Kaffaltii' : 'Payment' },
+              { to: '/contact', label: isOm ? 'Qunnamtii' : 'Contact' },
             ].map(({ to, label }) => (
               <Link key={label} to={to}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
@@ -107,8 +106,10 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
 
             {/* Language Switcher Badge */}
             <button onClick={toggleLanguage}
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-white bg-white/10 hover:bg-white/20 transition-all border border-white/15">
-              <span>{isOm ? 'A·A' : 'EN'}</span>
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold text-white bg-white/10 hover:bg-white/20 transition-all border border-white/15"
+              title={isOm ? 'Gara Ingiliffaatti jijjiiri' : 'Switch to Afaan Oromoo'}>
+              <Globe size={13} />
+              <span>{isOm ? 'A·O' : 'EN'}</span>
             </button>
 
             {user ? (
@@ -116,17 +117,17 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
                 onClick={() => navigate('/dashboard')}
                 className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-bold text-white bg-emerald-600 hover:bg-emerald-700 shadow-sm transition-all"
               >
-                <span>{isOm ? 'Dashboard' : 'Dashboard'}</span>
+                <span>{isOm ? 'Daashboordii' : 'Dashboard'}</span>
               </button>
             ) : (
               <div className="hidden sm:flex items-center gap-2">
                 <Link to="/login"
                   className="px-3 py-1.5 rounded-lg text-xs font-bold text-white hover:bg-white/10 transition-all">
-                  Login
+                  {isOm ? 'Seeni' : 'Login'}
                 </Link>
                 <Link to="/login"
                   className="px-3.5 py-1.5 rounded-lg text-xs font-bold text-white bg-[#159957] hover:bg-emerald-600 shadow transition-all">
-                  Register
+                  {isOm ? 'Galmaa\'i' : 'Register'}
                 </Link>
               </div>
             )}
@@ -144,7 +145,11 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
             {[
               { to: '/', label: isOm ? 'Fuula Jalqabaa' : 'Home' },
               { to: '/about', label: isOm ? 'Waa\'ee Keenya' : 'About' },
-              { to: '/login', label: t('auth.login') },
+              { to: '/payment', label: isOm ? 'Kaffaltii' : 'Payment' },
+              { to: '/contact', label: isOm ? 'Quunnamtii' : 'Contact' },
+              ...(user
+                ? [{ to: '/dashboard', label: isOm ? 'Gara Dashboard' : 'Go to Dashboard' }]
+                : [{ to: '/login', label: t('auth.login') }]),
             ].map(({ to, label }) => (
               <Link
                 key={to}
@@ -240,8 +245,10 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
                   { to: '/', label: isOm ? 'Fuula Jalqabaa' : 'Home' },
                   { to: '/about', label: isOm ? 'Waa\'ee Keenya' : 'About Us' },
                   { to: '/about#mission-vision', label: isOm ? 'Ergaa fi Mul\'ata' : 'Mission & Vision' },
-                  { to: '/about#heera-danbii', label: isOm ? 'Heera fi Danbii' : 'Rules & Regulations' },
-                  { to: '/login', label: isOm ? 'Portal Seeni' : 'Member Portal' },
+                  { to: '/about#heera-danbii', label: isOm ? 'Heera fi Danbii' : 'Laws & Regulations' },
+                  { to: '/payment', label: isOm ? 'Kaffaltii' : 'Payment & Contributions' },
+                  { to: '/contact', label: isOm ? 'Quunnamtii' : 'Contact Us' },
+                  { to: user ? '/dashboard' : '/login', label: user ? 'Dashboard' : (isOm ? 'Portal Seeni' : 'Member Portal') },
                 ].map(({ to, label }) => (
                   <li key={to}>
                     <Link to={to}
@@ -298,8 +305,8 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
               </h3>
               <ul className="space-y-3">
                 {[
-                  { icon: MapPin, text: isOm ? 'Finfinnee, Itoophiyaa' : 'Addis Ababa, Ethiopia' },
-                  { icon: Phone, text: '+251 900 000 000' },
+                  { icon: MapPin, text: isOm ? 'Melka Jabdu, Dirree Dawaa, Itoophiyaa' : 'Melka Jabdu, Dire Dawa, Ethiopia' },
+                  { icon: Phone, text: '+251 911 234 567' },
                   { icon: Mail, text: 'info@afosha.org' },
                 ].map(({ icon: Icon, text }) => (
                   <li key={text} className="flex items-start gap-3">
@@ -315,12 +322,12 @@ export default function PublicLayout({ children }: PublicLayoutProps) {
               {/* Newsletter / portal CTA */}
               <div className="mt-5 p-4 rounded-xl" style={{ background: 'rgba(255,255,255,0.07)' }}>
                 <p className="text-xs font-semibold text-white mb-2">
-                  {isOm ? 'Miseensa Taatee?' : 'Are you a member?'}
+                  {user ? (isOm ? 'Gara Dashboard Keessanii' : 'Access Your Dashboard') : (isOm ? 'Miseensa Taatee?' : 'Are you a member?')}
                 </p>
-                <Link to="/login"
+                <Link to={user ? "/dashboard" : "/login"}
                   className="block text-center py-2 px-4 rounded-lg text-xs font-semibold transition-all"
                   style={{ background: 'linear-gradient(135deg, #d97706, #f59e0b)', color: '#1e1b4b' }}>
-                  {isOm ? 'Gara Portaalichaatti Seeni' : 'Access Member Portal'}
+                  {user ? 'Dashboard' : (isOm ? 'Gara Portaalichaatti Seeni' : 'Access Member Portal')}
                 </Link>
               </div>
             </div>

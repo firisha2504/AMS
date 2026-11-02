@@ -1,56 +1,38 @@
 import { Router, Response } from 'express';
-import { PaymentMethod, PaymentStatus, TransactionType } from '@prisma/client';
+import { z } from 'zod';
 import prisma from '../config/database.js';
 import { AuthRequest, authenticate, authorize } from '../middleware/auth.js';
 import { validateBody, validateQuery } from '../middleware/validate.js';
 import { createAuditEntry } from '../middleware/audit.js';
-import {
-  generatePaymentId,
-  generateReceiptNumber,
-} from '../services/helpers.js';
 import { getMemberById, getLanguage, getStringParam } from '../middleware/commonOperations.js';
-import { recordLedgerEntry } from '../services/contribution.service.js';
-import { payPenalty, waivePenalty } from '../services/penalty.service.js';
-import { penaltyPaymentSchema, paginationSchema } from '../validators/schemas.js';
+import { payPenalty, waivePenalty, reversePenaltyWaiver, createManualPenalty } from '../services/penalty.service.js';
+import { paginationSchema } from '../validators/schemas.js';
 import { sendError, sendSuccess } from '../utils/response.js';
-import { sendPushNotification } from '../services/notification.service.js';
 
 const router = Router();
 
-// Get all penalties for a member
-router.get('/member/:memberId', authenticate, authorize('ADMIN', 'AUDITOR'), validateQuery(paginationSchema), async (req: AuthRequest, res: Response) => {
-  const lang = getLanguage(req);
-  const memberId = getStringParam(req.params.memberId);
-  const { page, limit, status } = req.validatedQuery as { page: number; limit: number; status?: string };
-
-  const { member, error } = await getMemberById(memberId, lang);
-  if (error) {
-    sendError(res, 'member.notFound', lang, 404);
-    return;
-  }
-
-  const where: Record<string, unknown> = { memberId };
-  if (status) where.status = status;
-
-  const [penalties, total] = await Promise.all([
-    prisma.penalty.findMany({
-      where,
-      orderBy: [{ year: 'desc' }, { weekNumber: 'desc' }],
-      skip: (page - 1) * limit,
-      take: limit,
-    }),
-    prisma.penalty.count({ where }),
-  ]);
-
-  sendSuccess(res, penalties, 'general.success', lang, 200, {
-    page,
-    limit,
-    total,
-    totalPages: Math.ceil(total / limit),
-  });
+const createPenaltySchema = z.object({
+  memberId: z.string().min(1),
+  amount: z.number().positive(),
+  reason: z.string().min(2),
+  title: z.string().optional(),
+  dueDate: z.string().optional(),
+  isMonthly: z.boolean().optional(),
 });
 
-// Get member's own penalties (for logged-in member)
+const payPenaltySchema = z.object({
+  penaltyId: z.string().min(1),
+  amount: z.number().positive(),
+  paymentMethod: z.enum(['CASH', 'BANK_TRANSFER', 'MOBILE_MONEY']).default('CASH'),
+  transactionReference: z.string().optional(),
+  notes: z.string().optional(),
+});
+
+const waivePenaltySchema = z.object({
+  reason: z.string().min(2, 'Reason is required'),
+});
+
+// 1. Get member's own penalties (for logged-in member)
 router.get('/my', authenticate, authorize('MEMBER'), validateQuery(paginationSchema), async (req: AuthRequest, res: Response) => {
   const lang = getLanguage(req);
   const userId = req.user!.userId;
@@ -68,7 +50,7 @@ router.get('/my', authenticate, authorize('MEMBER'), validateQuery(paginationSch
   const [penalties, total] = await Promise.all([
     prisma.penalty.findMany({
       where,
-      orderBy: [{ year: 'desc' }, { weekNumber: 'desc' }],
+      orderBy: [{ year: 'desc' }, { weekNumber: 'desc' }, { createdAt: 'desc' }],
       skip: (page - 1) * limit,
       take: limit,
     }),
@@ -83,15 +65,79 @@ router.get('/my', authenticate, authorize('MEMBER'), validateQuery(paginationSch
   });
 });
 
-// Pay a specific penalty
-router.post('/pay', authenticate, authorize('ADMIN', 'AUDITOR'), validateBody(penaltyPaymentSchema), async (req: AuthRequest, res: Response) => {
+// 2. Get all penalties for a member (ADMIN/AUDITOR)
+router.get('/member/:memberId', authenticate, authorize('ADMIN', 'AUDITOR'), validateQuery(paginationSchema), async (req: AuthRequest, res: Response) => {
+  const lang = getLanguage(req);
+  const memberId = getStringParam(req.params.memberId);
+  const { page, limit, status } = req.validatedQuery as { page: number; limit: number; status?: string };
+
+  const { member, error } = await getMemberById(memberId, lang);
+  if (error) {
+    sendError(res, 'member.notFound', lang, 404);
+    return;
+  }
+
+  const where: Record<string, unknown> = { memberId: member!.id };
+  if (status) where.status = status;
+
+  const [penalties, total] = await Promise.all([
+    prisma.penalty.findMany({
+      where,
+      orderBy: [{ year: 'desc' }, { weekNumber: 'desc' }, { createdAt: 'desc' }],
+      skip: (page - 1) * limit,
+      take: limit,
+    }),
+    prisma.penalty.count({ where }),
+  ]);
+
+  sendSuccess(res, penalties, 'general.success', lang, 200, {
+    page,
+    limit,
+    total,
+    totalPages: Math.ceil(total / limit),
+  });
+});
+
+// 3. Admin creates a manual penalty
+router.post('/', authenticate, authorize('ADMIN'), validateBody(createPenaltySchema), async (req: AuthRequest, res: Response) => {
+  const lang = getLanguage(req);
+  const { memberId, amount, reason, title, dueDate, isMonthly } = req.body;
+  const createdById = req.user!.userId;
+
+  try {
+    const penalty = await createManualPenalty({
+      memberId,
+      amount,
+      reason,
+      title,
+      dueDate: dueDate ? new Date(dueDate) : undefined,
+      isMonthly,
+      createdById,
+    });
+
+    await createAuditEntry(
+      createdById,
+      'PENALTY_CREATED',
+      'penalties',
+      { penaltyId: penalty.id, memberId, amount, reason },
+      req.ip
+    );
+
+    sendSuccess(res, penalty, 'general.success', lang, 201);
+  } catch (error: any) {
+    sendError(res, error.message || 'Failed to create penalty', lang, 400);
+  }
+});
+
+// 4. Pay a penalty (Member can pay their own, or Admin/Auditor can record payment)
+router.post('/pay', authenticate, authorize('ADMIN', 'AUDITOR', 'MEMBER'), validateBody(payPenaltySchema), async (req: AuthRequest, res: Response) => {
   const lang = getLanguage(req);
   const { penaltyId, amount, paymentMethod, transactionReference, notes } = req.body;
-  const recordedById = req.user!.userId;
+  const userId = req.user!.userId;
 
   const penalty = await prisma.penalty.findUnique({
     where: { id: penaltyId },
-    include: { member: { select: { fullName: true, memberId: true, userId: true } } },
+    include: { member: true },
   });
 
   if (!penalty) {
@@ -99,149 +145,93 @@ router.post('/pay', authenticate, authorize('ADMIN', 'AUDITOR'), validateBody(pe
     return;
   }
 
-  if (penalty.status === 'SETTLED') {
-    sendError(res, 'penalty.alreadyPaid', lang, 400);
-    return;
+  // If role is MEMBER, verify they own the penalty
+  if (req.user?.role === 'MEMBER') {
+    const member = await prisma.member.findUnique({ where: { userId } });
+    if (!member || member.id !== penalty.memberId) {
+      sendError(res, 'Unauthorized to pay penalty of another member', lang, 403);
+      return;
+    }
   }
 
-  if (penalty.status === 'WAIVED') {
-    sendError(res, 'penalty.alreadyWaived', lang, 400);
-    return;
-  }
-
-  // Check if amount is valid (should not exceed penalty amount)
-  const penaltyAmount = Number(penalty.amount);
-  if (amount > penaltyAmount) {
-    sendError(res, 'penalty.amountExceedsPenalty', lang, 400);
-    return;
-  }
-
-  // Create payment record
-  const payment = await prisma.payment.create({
-    data: {
-      paymentId: generatePaymentId(),
-      memberId: penalty.memberId,
+  try {
+    const result = await payPenalty(
+      penaltyId,
       amount,
+      userId,
       paymentMethod,
       transactionReference,
-      notes: notes || `Penalty payment for Week ${penalty.weekNumber}, ${penalty.year}`,
-      recordedById,
-      receiptNumber: generateReceiptNumber(),
-      status: PaymentStatus.PENDING,
-    },
-    include: {
-      member: { select: { fullName: true, memberId: true } },
-      recordedBy: { select: { username: true } },
-    },
-  });
+      notes
+    );
 
-  // Record ledger entry
-  await recordLedgerEntry(
-    penalty.memberId,
-    TransactionType.PENALTY,
-    amount,
-    `Penalty payment ${payment.paymentId} - Week ${penalty.weekNumber}, ${penalty.year}`,
-    recordedById
-  );
+    await createAuditEntry(
+      userId,
+      'PENALTY_PAID',
+      'penalties',
+      {
+        penaltyId,
+        memberId: penalty.memberId,
+        amount,
+        paymentId: result.payment.paymentId,
+      },
+      req.ip
+    );
 
-  // Mark penalty as settled
-  await payPenalty(penaltyId, amount);
-
-  // Create audit entry
-  await createAuditEntry(
-    recordedById,
-    'PENALTY_PAYMENT_RECORDED',
-    'penalties',
-    {
-      paymentId: payment.paymentId,
-      penaltyId,
-      weekNumber: penalty.weekNumber,
-      year: penalty.year,
-      amount,
-    },
-    req.ip
-  );
-
-  // Send notification to member
-  await prisma.notification.create({
-    data: {
-      userId: penalty.member.userId,
-      memberId: penalty.memberId,
-      type: 'PAYMENT_CONFIRMATION',
-      title: 'Penalty Payment Received',
-      titleOm: 'Adabbiin Kaffaltii Fudhatame',
-      message: `Your penalty payment of ${amount} Birr for Week ${penalty.weekNumber}, ${penalty.year} has been recorded.`,
-      messageOm: `Kaffaltiin adabbii keessanii Birr ${amount} Torban ${penalty.weekNumber}, ${penalty.year}f fudhatameera.`,
-      metadata: { paymentId: payment.paymentId, penaltyId, receiptNumber: payment.receiptNumber },
-    },
-  });
-
-  sendSuccess(res, { payment, penalty: await prisma.penalty.findUnique({ where: { id: penaltyId } }) }, 'penalty.paymentRecorded', lang, 201);
+    sendSuccess(res, result, 'penalty.paymentRecorded', lang, 200);
+  } catch (error: any) {
+    sendError(res, error.message || 'Failed to pay penalty', lang, 400);
+  }
 });
 
-// Waive a penalty (ADMIN only)
-router.patch('/:id/waive', authenticate, authorize('ADMIN'), async (req: AuthRequest, res: Response) => {
+// 5. Waive a penalty (ADMIN only)
+router.patch('/:id/waive', authenticate, authorize('ADMIN'), validateBody(waivePenaltySchema), async (req: AuthRequest, res: Response) => {
   const lang = getLanguage(req);
   const id = String(req.params.id);
   const { reason } = req.body;
+  const userId = req.user!.userId;
 
-  const penalty = await prisma.penalty.findUnique({
-    where: { id },
-    include: { member: { select: { fullName: true, memberId: true, userId: true } } },
-  });
+  try {
+    const updated = await waivePenalty(id, userId, reason);
 
-  if (!penalty) {
-    sendError(res, 'penalty.notFound', lang, 404);
-    return;
+    await createAuditEntry(
+      userId,
+      'PENALTY_WAIVED',
+      'penalties',
+      { penaltyId: id, memberId: updated.memberId, reason },
+      req.ip
+    );
+
+    sendSuccess(res, updated, 'penalty.waived', lang);
+  } catch (error: any) {
+    sendError(res, error.message || 'Failed to waive penalty', lang, 400);
   }
-
-  if (penalty.status === 'SETTLED') {
-    sendError(res, 'penalty.alreadyPaid', lang, 400);
-    return;
-  }
-
-  if (penalty.status === 'WAIVED') {
-    sendError(res, 'penalty.alreadyWaived', lang, 400);
-    return;
-  }
-
-  // Waive the penalty
-  await waivePenalty(id, reason);
-
-  // Create audit entry
-  await createAuditEntry(
-    req.user!.userId,
-    'PENALTY_WAIVED',
-    'penalties',
-    {
-      penaltyId: id,
-      memberId: penalty.memberId,
-      amount: penalty.amount,
-      weekNumber: penalty.weekNumber,
-      year: penalty.year,
-      reason: reason || 'No reason provided',
-    },
-    req.ip
-  );
-
-  // Send notification to member
-  await prisma.notification.create({
-    data: {
-      userId: penalty.member.userId,
-      memberId: penalty.memberId,
-      type: 'SYSTEM_ANNOUNCEMENT',
-      title: 'Penalty Waived',
-      titleOm: 'Adabbiin Dhiifame',
-      message: `Your penalty of ${penalty.amount} Birr for Week ${penalty.weekNumber}, ${penalty.year} has been waived. Reason: ${reason || 'Administrative decision'}`,
-      messageOm: `Adabbiin keessan Birr ${penalty.amount} Torban ${penalty.weekNumber}, ${penalty.year}f dhiifameera. Sababni: ${reason || 'Murtii bulchiinsaa'}`,
-      metadata: { penaltyId: id, reason },
-    },
-  });
-
-  sendSuccess(res, await prisma.penalty.findUnique({ where: { id } }), 'penalty.waived', lang);
 });
 
-// Get all penalties (ADMIN/AUDITOR) - with filters
+// 6. Reverse a penalty waiver (ADMIN only)
+router.patch('/:id/reverse', authenticate, authorize('ADMIN'), validateBody(waivePenaltySchema), async (req: AuthRequest, res: Response) => {
+  const lang = getLanguage(req);
+  const id = String(req.params.id);
+  const { reason } = req.body;
+  const userId = req.user!.userId;
+
+  try {
+    const updated = await reversePenaltyWaiver(id, userId, reason);
+
+    await createAuditEntry(
+      userId,
+      'PENALTY_WAIVER_REVERSED',
+      'penalties',
+      { penaltyId: id, memberId: updated.memberId, reason },
+      req.ip
+    );
+
+    sendSuccess(res, updated, 'general.success', lang);
+  } catch (error: any) {
+    sendError(res, error.message || 'Failed to reverse penalty waiver', lang, 400);
+  }
+});
+
+// 7. Get all penalties (ADMIN/AUDITOR)
 router.get('/', authenticate, authorize('ADMIN', 'AUDITOR'), validateQuery(paginationSchema), async (req: AuthRequest, res: Response) => {
   const lang = getLanguage(req);
   const { page, limit, status, isMonthly } = req.validatedQuery as {
@@ -266,7 +256,7 @@ router.get('/', authenticate, authorize('ADMIN', 'AUDITOR'), validateQuery(pagin
           },
         },
       },
-      orderBy: [{ year: 'desc' }, { weekNumber: 'desc' }],
+      orderBy: [{ year: 'desc' }, { weekNumber: 'desc' }, { createdAt: 'desc' }],
       skip: (page - 1) * limit,
       take: limit,
     }),
@@ -281,7 +271,7 @@ router.get('/', authenticate, authorize('ADMIN', 'AUDITOR'), validateQuery(pagin
   });
 });
 
-// Get penalty by ID
+// 8. Get penalty by ID
 router.get('/:id', authenticate, authorize('ADMIN', 'AUDITOR'), async (req: AuthRequest, res: Response) => {
   const lang = getLanguage(req);
   const id = String(req.params.id);
@@ -295,6 +285,7 @@ router.get('/:id', authenticate, authorize('ADMIN', 'AUDITOR'), async (req: Auth
           memberId: true,
         },
       },
+      allocations: true,
     },
   });
 

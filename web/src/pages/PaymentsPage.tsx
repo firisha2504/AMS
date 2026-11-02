@@ -5,6 +5,20 @@ import { api } from '../lib/api';
 import { PageHeader, Badge, LoadingSpinner, Modal, inputClass, btnPrimary, btnSecondary, Select, DateInput } from '../components/ui';
 import { formatMeetingLabel, formatMeetingShort } from '../lib/meetingUtils';
 
+export interface AllocationItem {
+  id: string;
+  amount: number;
+  allocationType: 'WEEKLY' | 'WEEKLY_PENALTY' | 'MONTHLY_PENALTY' | 'OTHER_PENALTY' | 'SPECIAL' | 'EMERGENCY' | 'HISTORICAL' | string;
+  weeklyObligationId?: string;
+  penaltyId?: string;
+  specialContributionObligationId?: string;
+  joiningObligationId?: string;
+  createdAt?: string;
+  notes?: string;
+}
+
+export type PaymentCategoryTab = 'ALL' | 'WEEKLY' | 'WEEKLY_PENALTY' | 'MONTHLY_PENALTY' | 'OTHER_PENALTY' | 'SPECIAL' | 'EMERGENCY' | 'HISTORICAL';
+
 interface Payment {
   id: string; paymentId: string; amount: number; paymentDate: string;
   paymentMethod: string; status: string; receiptNumber?: string;
@@ -12,7 +26,10 @@ interface Payment {
   obligationId?: string;
   specialContributionObligationId?: string;
   obligation?: { weekNumber: number; year: number; dueDate: string };
+  penalty?: { id: string; reason: string; weekNumber?: number; isMonthly: boolean };
   specialContributionObligation?: { specialContribution: { title: string; titleOm?: string; type: string } };
+  allocations?: AllocationItem[];
+  receipt?: { id: string; receiptNumber: string; issuedAt: string };
   member: { fullName: string; memberId: string };
 }
 interface Member { id: string; fullName: string; memberId: string; }
@@ -28,16 +45,31 @@ interface Obligation {
 
 const METHODS = ['CASH', 'BANK_TRANSFER', 'MOBILE_MONEY'];
 
+const getAllocationCategoryName = (type: string, isOm: boolean) => {
+  switch (type) {
+    case 'WEEKLY': return isOm ? 'Kaffaltii Torbanii' : 'Weekly Contribution';
+    case 'WEEKLY_PENALTY': return isOm ? 'Adabbii Torbanii' : 'Weekly Penalty';
+    case 'MONTHLY_PENALTY': return isOm ? 'Adabbii Ji\'aa' : 'Monthly Penalty';
+    case 'OTHER_PENALTY': return isOm ? 'Adabbii Biroo' : 'Other Penalty';
+    case 'SPECIAL': return isOm ? 'Gumaacha Addaa' : 'Special Contribution';
+    case 'EMERGENCY': return isOm ? 'Gumaacha Hatattamaa' : 'Emergency Contribution';
+    case 'HISTORICAL': return isOm ? 'Seenaa Hirmaataa' : 'Historical Contribution';
+    default: return type.replace(/_/g, ' ');
+  }
+};
+
 export default function PaymentsPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const isOm = i18n.language === 'om';
 
   const [payments, setPayments] = useState<Payment[]>([]);
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('');
-  const [paymentTypeTab, setPaymentTypeTab] = useState<'ALL' | 'WEEKLY' | 'SPECIAL'>('ALL');
+  const [paymentTypeTab, setPaymentTypeTab] = useState<PaymentCategoryTab>('ALL');
   const [paidUnpaidFilter, setPaidUnpaidFilter] = useState<'ALL' | 'PAID' | 'UNPAID'>('ALL');
   const [weekFilter, setWeekFilter] = useState<string>('ALL');
+  const [selectedAllocationPayment, setSelectedAllocationPayment] = useState<Payment | null>(null);
   
   // For unpaid obligations view
   const [weeklyObligations, setWeeklyObligations] = useState<any[]>([]);
@@ -346,11 +378,38 @@ export default function PaymentsPage() {
     setReceipt(data.data);
   };
 
+  const matchesCategory = (p: Payment, tab: PaymentCategoryTab) => {
+    if (tab === 'ALL') return true;
+    if (p.allocations && p.allocations.length > 0) {
+      return p.allocations.some(a => a.allocationType === tab);
+    }
+    if (tab === 'WEEKLY') {
+      return !!p.obligation || (!p.specialContributionObligation && !(p.notes?.toLowerCase().includes('penalty') ?? false));
+    }
+    if (tab === 'WEEKLY_PENALTY') {
+      return (!!p.penalty && !p.penalty.isMonthly) || (p.notes?.toLowerCase().includes('weekly penalty') ?? false);
+    }
+    if (tab === 'MONTHLY_PENALTY') {
+      return (!!p.penalty && p.penalty.isMonthly) || (p.notes?.toLowerCase().includes('monthly penalty') ?? false);
+    }
+    if (tab === 'OTHER_PENALTY') {
+      return (p.notes?.toLowerCase().includes('penalty') ?? false) && !p.obligation;
+    }
+    if (tab === 'SPECIAL') {
+      return !!p.specialContributionObligation && p.specialContributionObligation.specialContribution?.type !== 'EMERGENCY';
+    }
+    if (tab === 'EMERGENCY') {
+      return !!p.specialContributionObligation && p.specialContributionObligation.specialContribution?.type === 'EMERGENCY';
+    }
+    if (tab === 'HISTORICAL') {
+      return (p.notes?.toLowerCase().includes('historical') ?? false) || (p.notes?.toLowerCase().includes('joining') ?? false);
+    }
+    return false;
+  };
+
   const filtered = payments.filter(p => {
     const statusMatch = !statusFilter || p.status === statusFilter;
-    const typeMatch = paymentTypeTab === 'ALL' ||
-      (paymentTypeTab === 'WEEKLY' && p.obligation) ||
-      (paymentTypeTab === 'SPECIAL' && p.specialContributionObligation);
+    const typeMatch = matchesCategory(p, paymentTypeTab);
     
     // Paid/Unpaid filter based on payment status
     const paidUnpaidMatch = paidUnpaidFilter === 'ALL' ||
@@ -363,31 +422,6 @@ export default function PaymentsPage() {
     
     return statusMatch && typeMatch && paidUnpaidMatch && weekMatch;
   });
-
-  // Group payments by week for collapsible sections (only non-weekly payments)
-  const groupedPayments = useMemo(() => {
-    const groups: Record<string, Payment[]> = {};
-    
-    filtered.forEach(payment => {
-      if (!payment.obligation && !payment.specialContributionObligation) {
-        // Non-weekly, non-special contribution payments (penalty, general)
-        if (payment.notes?.toLowerCase().includes('penalty')) {
-          // Penalty payment
-          const key = 'penalty';
-          if (!groups[key]) groups[key] = [];
-          groups[key].push(payment);
-        } else {
-          // Other payments
-          const key = 'other';
-          if (!groups[key]) groups[key] = [];
-          groups[key].push(payment);
-        }
-      }
-      // Weekly and special contribution payments are handled separately below
-    });
-    
-    return groups;
-  }, [filtered]);
 
   // Group weekly obligations by week (show ALL members, paid or not)
   const groupedWeeklyObligations = useMemo(() => {
@@ -411,22 +445,40 @@ export default function PaymentsPage() {
 
   // Group special contribution obligations by campaign (show ALL members, paid or not)
   const groupedSpecialContributions = useMemo(() => {
-    const groups: Record<string, { title: string; type: string; obligations: any[] }> = {};
+    const groups: Record<string, { id: string; campaignId: string; title: string; type: string; obligations: any[] }> = {};
     
     specialObligations.forEach(obligation => {
-      const key = obligation.specialContributionId;
+      const key = obligation.specialContributionId || obligation.campaignId || obligation.id;
       if (!groups[key]) {
         groups[key] = {
-          title: obligation.title,
-          type: obligation.campaignType,
+          id: key,
+          campaignId: obligation.campaignId || key,
+          title: obligation.title || 'Special Contribution Event',
+          type: obligation.campaignType || 'SPECIAL',
           obligations: []
         };
       }
       groups[key].obligations.push(obligation);
     });
+
+    if (paymentTypeTab === 'EMERGENCY') {
+      const filteredGroups: typeof groups = {};
+      Object.entries(groups).forEach(([k, v]) => {
+        if (v.type === 'EMERGENCY') filteredGroups[k] = v;
+      });
+      return filteredGroups;
+    }
+
+    if (paymentTypeTab === 'SPECIAL') {
+      const filteredGroups: typeof groups = {};
+      Object.entries(groups).forEach(([k, v]) => {
+        if (v.type !== 'EMERGENCY') filteredGroups[k] = v;
+      });
+      return filteredGroups;
+    }
     
     return groups;
-  }, [specialObligations]);
+  }, [specialObligations, paymentTypeTab]);
 
 
   // Unpaid obligations not already represented by a payment record
@@ -512,16 +564,28 @@ export default function PaymentsPage() {
             </div>
           </div>
 
-          {/* Payment type tabs */}
-          <div className="flex gap-1 mb-4 bg-slate-100 p-1 rounded-xl w-fit">
+          {/* Payment category tabs (All 7 Categories) */}
+          <div className="flex flex-wrap gap-1.5 mb-4 bg-slate-100 p-1.5 rounded-xl w-full">
             {[
-              { value: 'ALL' as const, label: `All (${payments.length + allUnpaidObligations.length})` },
-              { value: 'WEEKLY' as const, label: `Weekly (${payments.filter(p => p.obligation).length + weeklyObligations.length})` },
-              { value: 'SPECIAL' as const, label: `Special (${payments.filter(p => p.specialContributionObligation).length + specialObligations.length})` },
+              { value: 'ALL' as const, label: isOm ? 'Hunda' : 'All Categories', count: payments.length + allUnpaidObligations.length },
+              { value: 'WEEKLY' as const, label: isOm ? '1. Torbanii' : '1. Weekly', count: payments.filter(p => matchesCategory(p, 'WEEKLY')).length + weeklyObligations.length },
+              { value: 'WEEKLY_PENALTY' as const, label: isOm ? '2. Adabbii Torbanii' : '2. Weekly Penalty', count: payments.filter(p => matchesCategory(p, 'WEEKLY_PENALTY')).length },
+              { value: 'MONTHLY_PENALTY' as const, label: isOm ? '3. Adabbii Ji\'aa' : '3. Monthly Penalty', count: payments.filter(p => matchesCategory(p, 'MONTHLY_PENALTY')).length },
+              { value: 'OTHER_PENALTY' as const, label: isOm ? '4. Adabbii Biroo' : '4. Other Penalties', count: payments.filter(p => matchesCategory(p, 'OTHER_PENALTY')).length },
+              { value: 'SPECIAL' as const, label: isOm ? '5. Gumaacha Addaa' : '5. Special', count: payments.filter(p => matchesCategory(p, 'SPECIAL')).length + specialObligations.length },
+              { value: 'EMERGENCY' as const, label: isOm ? '6. Hatattamaa' : '6. Emergency', count: payments.filter(p => matchesCategory(p, 'EMERGENCY')).length },
+              { value: 'HISTORICAL' as const, label: isOm ? '7. Seenaa Hirmaataa' : '7. Historical', count: payments.filter(p => matchesCategory(p, 'HISTORICAL')).length },
             ].map(f => (
-              <button key={f.value} onClick={() => { setPaymentTypeTab(f.value); setPaidUnpaidFilter('ALL'); setWeekFilter('ALL'); }}
-                className={`px-4 py-1.5 rounded-lg text-xs font-medium transition-all ${paymentTypeTab === f.value ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}>
-                {f.label}
+              <button
+                key={f.value}
+                onClick={() => { setPaymentTypeTab(f.value); setPaidUnpaidFilter('ALL'); setWeekFilter('ALL'); }}
+                className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  paymentTypeTab === f.value
+                    ? 'bg-white shadow-sm text-blue-700 ring-1 ring-blue-200'
+                    : 'text-slate-600 hover:text-slate-900 hover:bg-white/50'
+                }`}
+              >
+                {f.label} ({f.count})
               </button>
             ))}
           </div>
@@ -697,7 +761,7 @@ export default function PaymentsPage() {
               </thead>
               <tbody className="divide-y">
                 {(() => {
-                  const hasRows = Object.keys(groupedPayments).length > 0 || Object.keys(groupedWeeklyObligations).length > 0 || Object.keys(groupedSpecialContributions).length > 0;
+                  const hasRows = filtered.length > 0 || Object.keys(groupedWeeklyObligations).length > 0 || Object.keys(groupedSpecialContributions).length > 0;
 
                   if (!hasRows) {
                     return (
@@ -788,18 +852,33 @@ export default function PaymentsPage() {
                         return (
                           <React.Fragment key={`special-${groupKey}`}>
                             {/* Special Contribution Header (Collapsible) */}
-                            <tr key={`header-special-${groupKey}`} className="bg-purple-100 hover:bg-purple-200 cursor-pointer" onClick={() => toggleWeek(`special-${groupKey}`)}>
-                              <td colSpan={8} className="px-5 py-3">
-                                <div className="flex items-center justify-between">
+                            <tr key={`header-special-${groupKey}`} className="bg-purple-50 hover:bg-purple-100 cursor-pointer border-t-2 border-purple-200" onClick={() => toggleWeek(`special-${groupKey}`)}>
+                              <td colSpan={8} className="px-5 py-3.5">
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                                   <div className="flex items-center gap-3">
                                     {isCollapsed ? (
-                                      <ChevronRight size={16} className="text-purple-700" />
+                                      <ChevronRight size={18} className="text-purple-700" />
                                     ) : (
-                                      <ChevronDown size={16} className="text-purple-700" />
+                                      <ChevronDown size={18} className="text-purple-700" />
                                     )}
-                                    <span className="font-semibold text-purple-900">{group.title}</span>
-                                    <span className="text-xs text-purple-700">
-                                      ({group.obligations.length} member{group.obligations.length === 1 ? '' : 's'} - {totalAmount.toLocaleString()} ETB due, {totalPaid.toLocaleString()} ETB paid)
+                                    <div>
+                                      <div className="flex items-center gap-2">
+                                        <span className="font-bold text-purple-950 text-sm sm:text-base">{group.title}</span>
+                                        <span className="px-2 py-0.5 rounded-full text-[11px] font-mono font-bold bg-purple-200 text-purple-900">
+                                          {group.campaignId}
+                                        </span>
+                                        <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-100 text-indigo-800">
+                                          {group.type}
+                                        </span>
+                                      </div>
+                                      <p className="text-xs text-purple-700 mt-0.5">
+                                        {group.obligations.length} eligible member{group.obligations.length === 1 ? '' : 's'} • Expected: <span className="font-bold">{totalAmount.toLocaleString()} ETB</span> • Paid: <span className="font-bold text-emerald-700">{totalPaid.toLocaleString()} ETB</span> • Outstanding: <span className="font-bold text-rose-700">{Math.max(0, totalAmount - totalPaid).toLocaleString()} ETB</span>
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <div className="text-right">
+                                    <span className="text-xs font-bold px-3 py-1 bg-white rounded-lg border border-purple-200 text-purple-900 shadow-sm">
+                                      {totalAmount > 0 ? Math.min(100, Math.round((totalPaid / totalAmount) * 100)) : 0}% Collected
                                     </span>
                                   </div>
                                 </div>
@@ -842,6 +921,100 @@ export default function PaymentsPage() {
                           </React.Fragment>
                         );
                       })}
+
+                      {/* Direct / Penalty / Multi-Category Payment Transactions */}
+                      {filtered
+                        .filter(p => !p.obligation && !p.specialContributionObligation)
+                        .map(p => {
+                          const hasMultiAllocations = p.allocations && p.allocations.length > 1;
+                          const singleAlloc = p.allocations && p.allocations.length === 1 ? p.allocations[0] : null;
+                          const categoryTitle = hasMultiAllocations
+                            ? (isOm ? `Gosoota ${p.allocations!.length} Hirame` : `Split (${p.allocations!.length} categories)`)
+                            : singleAlloc
+                              ? getAllocationCategoryName(singleAlloc.allocationType, isOm)
+                              : p.penalty
+                                ? (p.penalty.isMonthly ? (isOm ? "Adabbii Ji'aa" : "Monthly Penalty") : (isOm ? "Adabbii Torbanii" : "Weekly Penalty"))
+                                : (isOm ? "Kaffaltii Biroo" : "Other Payment");
+
+                          return (
+                            <tr key={`direct-pay-${p.id}`} className="hover:bg-slate-50">
+                              <td className="px-5 py-3 font-mono text-xs text-slate-600 font-semibold">
+                                {p.paymentId || p.id.slice(0, 8)}
+                              </td>
+                              <td className="px-5 py-3">
+                                <p className="text-sm font-medium text-slate-800">{p.member.fullName}</p>
+                                <p className="text-xs text-slate-400">#{p.member.memberId}</p>
+                              </td>
+                              <td className="px-5 py-3">
+                                {hasMultiAllocations ? (
+                                  <button
+                                    onClick={() => setSelectedAllocationPayment(p)}
+                                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 ring-1 ring-blue-300 hover:bg-blue-100 transition-colors"
+                                  >
+                                    <span>⚡ {categoryTitle}</span>
+                                    <span className="text-[10px] bg-blue-200 px-1.5 rounded-full">ℹ</span>
+                                  </button>
+                                ) : (
+                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 ring-1 ring-amber-200">
+                                    {categoryTitle}
+                                  </span>
+                                )}
+                              </td>
+                              <td className="px-5 py-3 text-right text-sm font-bold text-slate-800">
+                                +{Number(p.amount).toLocaleString()} ETB
+                              </td>
+                              <td className="px-5 py-3 text-xs text-slate-600 font-medium capitalize">
+                                {p.paymentMethod.replace(/_/g, ' ').toLowerCase()}
+                              </td>
+                              <td className="px-5 py-3 text-sm text-slate-500">
+                                {new Date(p.paymentDate).toLocaleDateString()}
+                              </td>
+                              <td className="px-5 py-3">
+                                <Badge status={p.status} />
+                              </td>
+                              <td className="px-5 py-3 text-xs">
+                                <div className="flex items-center gap-2">
+                                  {p.status === 'PENDING' && (
+                                    <button
+                                      className="px-2.5 py-1 bg-emerald-600 text-white rounded-lg text-xs font-semibold hover:bg-emerald-700 transition-colors"
+                                      onClick={() => setVerifyTarget(p)}
+                                    >
+                                      {isOm ? 'Mirkaneessi' : 'Verify'}
+                                    </button>
+                                  )}
+                                  {p.status === 'VERIFIED' && (
+                                    <button
+                                      className="px-2 py-1 text-emerald-700 hover:bg-emerald-50 rounded-lg text-xs font-medium transition-colors flex items-center gap-1"
+                                      onClick={() => viewReceipt(p.id)}
+                                      title={isOm ? 'Nagahee Ilaali' : 'View Receipt'}
+                                    >
+                                      <Receipt size={13} />
+                                      {isOm ? 'Nagahee' : 'Receipt'}
+                                    </button>
+                                  )}
+                                  {p.allocations && p.allocations.length > 0 && (
+                                    <button
+                                      className="px-2 py-1 text-blue-700 hover:bg-blue-50 rounded-lg text-xs font-medium transition-colors"
+                                      onClick={() => setSelectedAllocationPayment(p)}
+                                      title="Breakdown"
+                                    >
+                                      {isOm ? 'Hirmaannaa' : 'Allocations'}
+                                    </button>
+                                  )}
+                                  {p.status === 'VERIFIED' && (
+                                    <button
+                                      className="px-2 py-1 text-amber-700 hover:bg-amber-50 rounded-lg text-xs font-medium transition-colors"
+                                      onClick={() => { setRollbackTarget(p); setRollbackReason(''); setRollbackError(''); }}
+                                      title="Rollback"
+                                    >
+                                      <RotateCcw size={13} />
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
                     </>
                   );
                 })()}
@@ -1260,6 +1433,99 @@ export default function PaymentsPage() {
               </div>
             </div>
             <button className={btnSecondary} onClick={() => window.print()}>🖨 Print Receipt</button>
+          </div>
+        )}
+      </Modal>
+
+      {/* ── ALLOCATION BREAKDOWN MODAL ── */}
+      <Modal
+        open={!!selectedAllocationPayment}
+        onClose={() => setSelectedAllocationPayment(null)}
+        title={isOm ? "Ibsa Kaffaltii fi Hirmaannaa Gosootaa" : "Payment & Category Allocation Breakdown"}
+        wide
+      >
+        {selectedAllocationPayment && (
+          <div className="space-y-5">
+            {/* Transaction Top Summary */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-gray-50 border border-gray-200 rounded-xl p-4 text-xs">
+              <div>
+                <span className="text-gray-500">{isOm ? 'Lakk. Kaffaltii:' : 'Payment ID:'}</span>
+                <p className="font-mono font-bold text-gray-900 mt-0.5">{selectedAllocationPayment.paymentId || selectedAllocationPayment.id.slice(0, 10)}</p>
+              </div>
+              <div>
+                <span className="text-gray-500">{isOm ? 'Miseensa:' : 'Member:'}</span>
+                <p className="font-semibold text-gray-900 mt-0.5">{selectedAllocationPayment.member.fullName}</p>
+                <span className="text-[11px] text-gray-400 font-mono">#{selectedAllocationPayment.member.memberId}</span>
+              </div>
+              <div>
+                <span className="text-gray-500">{isOm ? 'Waliigala Kaffalame:' : 'Total Transaction:'}</span>
+                <p className="text-base font-extrabold text-emerald-600 mt-0.5">+{Number(selectedAllocationPayment.amount).toLocaleString()} ETB</p>
+              </div>
+              <div>
+                <span className="text-gray-500">{isOm ? 'Haala Kaffaltii:' : 'Status:'}</span>
+                <div className="mt-0.5"><Badge status={selectedAllocationPayment.status} /></div>
+              </div>
+            </div>
+
+            {/* Allocation breakdown list */}
+            <div>
+              <h4 className="text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">
+                {isOm ? 'Hirmaannaa Gosoota Kaffaltii (ACID Allocations)' : 'Category Allocation Records'}
+              </h4>
+
+              {selectedAllocationPayment.allocations && selectedAllocationPayment.allocations.length > 0 ? (
+                <div className="border border-gray-200 rounded-xl overflow-hidden divide-y divide-gray-100">
+                  {selectedAllocationPayment.allocations.map((alloc, idx) => (
+                    <div key={alloc.id || idx} className="p-3.5 flex items-center justify-between hover:bg-gray-50/80 transition-colors text-sm">
+                      <div className="flex items-center gap-3">
+                        <span className="w-6 h-6 rounded-full bg-blue-100 text-blue-700 font-bold text-xs flex items-center justify-center">
+                          {idx + 1}
+                        </span>
+                        <div>
+                          <p className="font-bold text-gray-900">
+                            {getAllocationCategoryName(alloc.allocationType, isOm)}
+                          </p>
+                          <p className="text-xs text-gray-500 font-mono">
+                            Allocation ID: {alloc.id.slice(0, 12)}...
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="text-right">
+                        <span className="font-bold text-emerald-600 text-base">
+                          +{Number(alloc.amount).toLocaleString()} ETB
+                        </span>
+                        <p className="text-xs text-emerald-700 font-semibold">{isOm ? 'Mirkanaa\'e' : 'Allocated'}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-4 bg-gray-50 border rounded-xl text-center text-xs text-gray-500">
+                  {isOm ? 'Kaffaltiin kun gosa tokko qofaaf kan galmaa\'edha.' : 'Single category payment without split allocation records.'}
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-between items-center pt-2 border-t">
+              {selectedAllocationPayment.status === 'VERIFIED' ? (
+                <button
+                  className={btnPrimary}
+                  onClick={() => {
+                    const id = selectedAllocationPayment.id;
+                    setSelectedAllocationPayment(null);
+                    viewReceipt(id);
+                  }}
+                >
+                  <Receipt size={14} className="inline mr-1" />
+                  {isOm ? 'Ragaa Kaffaltii Ilaali' : 'View Official Receipt'}
+                </button>
+              ) : <div />}
+
+              <button className={btnSecondary} onClick={() => setSelectedAllocationPayment(null)}>
+                {isOm ? 'Cufi' : 'Close'}
+              </button>
+            </div>
           </div>
         )}
       </Modal>

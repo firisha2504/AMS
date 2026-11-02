@@ -40,6 +40,7 @@ enum PaymentProvider {
   TELEBIRR
   CBE
   EBIRR
+  BANK_TRANSFER
 }
 
 enum PaymentStatus {
@@ -115,6 +116,7 @@ enum SpecialContributionStatus {
 
 enum PenaltyStatus {
   OUTSTANDING
+  PARTIAL
   SETTLED
   WAIVED
 }
@@ -152,6 +154,7 @@ model User {
   expenses          Expense[]       @relation("UserExpenses")
   yearEndApprovals  YearEndSummary[] @relation("YearEndApprovals")
   authorizedReversals TransactionReversal[] @relation("AuthorizedReversals")
+  waivedPenalties   Penalty[]        @relation("WaivedPenalties")
 
   @@index([role])
   @@index([phone])
@@ -238,6 +241,7 @@ model WeeklyObligation {
   member   Member    @relation(fields: [memberId], references: [id], onDelete: Cascade)
   payments Payment[]
   paymentRequests PaymentRequest[] @relation("PaymentRequestWeekly")
+  allocations PaymentAllocation[] @relation("WeeklyAllocations")
 
   @@unique([memberId, weekNumber, year])
   @@index([dueDate])
@@ -249,7 +253,9 @@ model Payment {
   paymentId            String        @unique
   memberId             String
   obligationId         String?
+  penaltyId            String?
   specialContributionObligationId String?
+  joiningObligationId  String?
   amount               Decimal       @db.Decimal(12, 2)
   paymentDate          DateTime      @default(now())
   paymentMethod        PaymentMethod
@@ -266,7 +272,9 @@ model Payment {
 
   member      Member            @relation(fields: [memberId], references: [id], onDelete: Cascade)
   obligation  WeeklyObligation? @relation(fields: [obligationId], references: [id])
+  penalty     Penalty?          @relation("PenaltyPayments", fields: [penaltyId], references: [id])
   specialContributionObligation SpecialContributionObligation? @relation(fields: [specialContributionObligationId], references: [id])
+  joiningObligation JoiningObligation? @relation("JoiningPayments", fields: [joiningObligationId], references: [id])
   recordedBy  User              @relation("RecordedBy", fields: [recordedById], references: [id])
   verifiedBy  User?             @relation("VerifiedBy", fields: [verifiedById], references: [id])
   receipt     Receipt?          @relation("PaymentReceipt")
@@ -278,18 +286,29 @@ model Payment {
 }
 
 model Penalty {
-  id          String        @id @default(uuid())
-  memberId    String
-  weekNumber  Int?
-  year        Int?
-  amount      Decimal       @db.Decimal(12, 2)
-  reason      String
-  isMonthly   Boolean       @default(false)
-  status      PenaltyStatus @default(OUTSTANDING)
-  paidAt      DateTime?
-  createdAt   DateTime      @default(now())
+  id           String        @id @default(uuid())
+  memberId     String
+  title        String?
+  weekNumber   Int?
+  year         Int?
+  amount       Decimal       @db.Decimal(12, 2)
+  amountPaid   Decimal       @default(0) @db.Decimal(12, 2)
+  reason       String
+  isMonthly    Boolean       @default(false)
+  status       PenaltyStatus @default(OUTSTANDING)
+  dueDate      DateTime?
+  paidAt       DateTime?
+  waivedAt     DateTime?
+  waivedById   String?
+  waiverReason String?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt @default(now())
 
-  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  member          Member              @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  waivedBy        User?               @relation("WaivedPenalties", fields: [waivedById], references: [id])
+  payments        Payment[]           @relation("PenaltyPayments")
+  paymentRequests PaymentRequest[]    @relation("PenaltyPaymentRequests")
+  allocations     PaymentAllocation[] @relation("PenaltyAllocations")
 
   @@unique([memberId, weekNumber, year], name: "penalty_per_week")
   @@index([memberId])
@@ -519,6 +538,7 @@ model SpecialContributionObligation {
   member              Member              @relation(fields: [memberId], references: [id], onDelete: Cascade)
   payments            Payment[]
   paymentRequests     PaymentRequest[]    @relation("PaymentRequestSpecial")
+  allocations         PaymentAllocation[] @relation("SpecialAllocations")
 
   @@unique([specialContributionId, memberId])
   @@index([memberId])
@@ -541,10 +561,13 @@ model PaymentRequest {
   referenceNumber      String          @unique
   memberId             String
   obligationId         String?
+  penaltyId            String?
   specialContributionObligationId String?
+  joiningObligationId  String?
+  category             String?         // WEEKLY, PENALTY, SPECIAL, EMERGENCY, HISTORICAL, ALL
   amount               Decimal         @db.Decimal(12, 2)
   paymentProvider      PaymentProvider
-  status               String          @default("PENDING") // PENDING, SUBMITTED, VERIFIED, REJECTED, EXPIRED
+  status               String          @default("PENDING") // PENDING, SUBMITTED, VERIFIED, REJECTED, EXPIRED, FAILED
   accountDetails       Json            // { accountName, accountNumber, bankCode }
   transactionReference String?
   receiptScreenshot    String?         // URL to uploaded screenshot
@@ -557,7 +580,9 @@ model PaymentRequest {
 
   member      Member                    @relation(fields: [memberId], references: [id], onDelete: Cascade)
   obligation  WeeklyObligation?         @relation("PaymentRequestWeekly", fields: [obligationId], references: [id])
+  penalty     Penalty?                  @relation("PenaltyPaymentRequests", fields: [penaltyId], references: [id])
   specialContributionObligation SpecialContributionObligation? @relation("PaymentRequestSpecial", fields: [specialContributionObligationId], references: [id])
+  joiningObligation JoiningObligation? @relation("PaymentRequestJoining", fields: [joiningObligationId], references: [id])
   verifiedBy  User?                     @relation(fields: [verifiedById], references: [id])
 
   @@index([memberId])
@@ -565,8 +590,6 @@ model PaymentRequest {
   @@index([expiresAt])
   @@index([paymentProvider])
 }
-
-
 
 model JoiningObligation {
   id                            String   @id @default(uuid())
@@ -579,7 +602,10 @@ model JoiningObligation {
   createdAt                     DateTime @default(now())
   updatedAt                     DateTime @updatedAt
 
-  member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  member          Member              @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  payments        Payment[]           @relation("JoiningPayments")
+  paymentRequests PaymentRequest[]    @relation("PaymentRequestJoining")
+  allocations     PaymentAllocation[] @relation("JoiningAllocations")
 
   @@index([status])
   @@index([dueDate])
@@ -638,7 +664,11 @@ model PaymentAllocation {
   amount                           Decimal  @db.Decimal(12, 2)
   createdAt                        DateTime @default(now())
 
-  payment Payment @relation("AllocatedPayments", fields: [paymentId], references: [id], onDelete: Cascade)
+  payment                         Payment                        @relation("AllocatedPayments", fields: [paymentId], references: [id], onDelete: Cascade)
+  penalty                         Penalty?                       @relation("PenaltyAllocations", fields: [penaltyId], references: [id])
+  weeklyObligation                WeeklyObligation?              @relation("WeeklyAllocations", fields: [weeklyObligationId], references: [id])
+  specialContributionObligation SpecialContributionObligation? @relation("SpecialAllocations", fields: [specialContributionObligationId], references: [id])
+  joiningObligation               JoiningObligation?             @relation("JoiningAllocations", fields: [joiningObligationId], references: [id])
 
   @@index([paymentId])
   @@index([allocationType])

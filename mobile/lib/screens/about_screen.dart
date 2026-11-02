@@ -51,21 +51,62 @@ class _AboutScreenState extends State<AboutScreen>
     },
     {
       'slug': 'heera-danbii',
-      'title': 'Rules & Regulations',
-      'titleOm': 'Heera fi Danbii',
+      'title': 'Laws & Regulations (Seeraa fi Dambii)',
+      'titleOm': 'Seeraa fi Dambii Gamtaa',
       'content':
-          '1. All members must pay the weekly contribution of 50 ETB on time.\n\n'
-              '2. Missing a meeting without prior notice will incur a 50 ETB penalty.\n\n'
-              '3. Members must notify the group at least 24 hours before missing a meeting.\n\n'
-              '4. Monthly penalty for non-payment is 100 ETB.\n\n'
-              '5. Special contributions apply for graduation (100 ETB), '
-              'bereavement (100 ETB), and emergency situations.',
+          'PROPOSED INITIAL ORGANIZATIONAL RULES (Wixinee Dambii Jalqabaa)\n'
+              'Note: These rules are proposed initial rules subject to General Assembly adoption.\n\n'
+              'HEERA MOOTUMMAA RDFI (ARTICLE 31):\n'
+              '"Every person has the right to freedom of association for any cause or purpose, in accordance with the law, culture, and traditions of society."\n\n'
+              'SEERAA FI DAMBII GAMTAA (RULES 1 - 10):\n'
+              'Rule 1: Purpose of the Association\n'
+              'Our association is established to strengthen unity, mutual support, love, respect, and positive relationships among the youth.\n\n'
+              'Rule 2: Mutual Respect\n'
+              'Every member must respect the culture, religion, opinions, and perspectives of other members.\n\n'
+              'Rule 3: Weekly Contribution\n'
+              'Every member must pay the weekly contribution established by the organization on time. Contribution day is Saturday.\n\n'
+              'Rule 4: Payment Penalties\n'
+              'Any member who fails to pay the weekly contribution on time shall pay penalties as determined in the association\'s bylaws.\n\n'
+              'Rule 5: Special Contributions\n'
+              'When an exceptional event occurs for a member, such as bereavement or family educational graduation, other members make contributions per the association\'s decision.\n\n'
+              'Rule 6: Mutual Support\n'
+              'Members must support and stand by one another in times of joy, grief, and adversity.\n\n'
+              'Rule 7: Financial Transparency\n'
+              'Administration of revenue, expenditures, contributions, penalties, and association assets must be managed with transparency and verifiable documentation.\n\n'
+              'Rule 8: Meeting Participation\n'
+              'Members must make every effort to attend and participate in association meetings.\n\n'
+              'Rule 9: Association Decisions\n'
+              'Decisions of the association must be made legally, based on deliberation and consensus of the members.\n\n'
+              'Rule 10: Amendment of Regulations\n'
+              'The association bylaws may be amended whenever necessary based on the association\'s established decision-making procedures.\n\n'
+              'Motto: Tokkummaan Ciminaa fi Milkaayina (Unity is Strength and Success)',
       'contentOm':
-          '1. Miseensota hundi gumaacha torbanicha 50 ETB yeroon kaffaluu qabu.\n\n'
-              '2. Walga\'ii irraa malee beeksisa dursaa osoo hin kennin hafu 50 ETB adabamuu danda\'a.\n\n'
-              '3. Miseensonni yoo walga\'ii irraa dheessuu barbaadan sa\'aatii 24 dura beeksisuu qabu.\n\n'
-              '4. Adabbii ji\'aa kaffaltii dhabuuf 100 ETB dha.\n\n'
-              '5. Gumaacha addaa eebbifamuu (100 ETB), du\'a (100 ETB) fi hatattamaa irratti ni barbaachisa.',
+          'WIXINEE DAMBII JALQABAA GAMTAA\n'
+              'Hubachiisa: Seeraa fi dambiin kun wixinee jalqabaa marii fi murtee yaa\'ii waliigalaa gamtaatiif dhiyaatedha.\n\n'
+              'HEERA MOOTUMMAA RDFI (KEEWWATA 31):\n'
+              '"Namni kamiyyuu haala seera biyyattii, aadaa fi duudhaa hawaasaa hin faallessineen kaayyoo ykn sababa fedheef gurmaa\'uu ykn gamtaadhaan ijaaramuu mirga qaba."\n\n'
+              'SEERAA FI DAMBII GAMTAA (SEERA 1 - 10):\n'
+              'Seera 1: Kaayyoo Gamtaa\n'
+              'Gamtaan keenya kan hundeeffame tokkummaa, wal-gargaarsa, jaalala, kabajaafi hariiroo gaarii dargaggoota gidduutti cimsuuf.\n\n'
+              'Seera 2: Kabaja Walii\n'
+              'Miseensi hundi aadaa, amantii, yaadaafi ilaalcha miseensota biroo kabajuu qaba.\n\n'
+              'Seera 3: Kaffaltii Torbanii\n'
+              'Miseensi hundi kaffaltii torbanii dhaabbanni murteesse yeroo isaa eeggatee kaffaluu qaba. Guyyaan kaffaltii Sanbata.\n\n'
+              'Seera 4: Adabbii Kaffaltii\n'
+              'Miseensi kaffaltii torbanii yeroo isaa keessatti hin kaffalle adabbii akkaataa dambii gamtaa keessatti murtaa\'een kaffaluu qaba.\n\n'
+              'Seera 5: Gumaacha Addaa\n'
+              'Yeroo miseensa tokkoof taatee addaa, kan akka du\'a ykn eebba barnootaa maatii isaa, uumamu miseensonni biroo akka murtii gamtaa gumaacha taasisu.\n\n'
+              'Seera 6: Wal-gargaarsa\n'
+              'Miseensonni yeroo gammachuu, gaddaafi rakkoo wal deeggaruu qabu.\n\n'
+              'Seera 7: Iftoomina Maallaqaa\n'
+              'Bulchiinsi galii, baasii, kaffaltii, adabbii fi qabeenya gamtaa iftoominaafi ragaa qabatamaa irratti hundaa\'uun bulchuu qaba.\n\n'
+              'Seera 8: Hirmaannaa Walga\'ii\n'
+              'Miseensonni walga\'ii gamtaa irratti hirmaachuuf carraaqqii gochuu qabu.\n\n'
+              'Seera 9: Murtii Gamtaa\n'
+              'Murtiin gamtaa haala seera qabeessa, marii fi waliigaltee miseensotaa irratti hundaa\'uun kennamuu qaba.\n\n'
+              'Seera 10: Fooyya\'iinsa Dambii\n'
+              'Dambiin gamtaa yeroo barbaachisaa ta\'etti akkaataa adeemsa murtii gamtaa irratti hundaa\'uun fooyya\'uu danda\'a.\n\n'
+              'Mata Duree: Tokkummaan Ciminaa fi Milkaayina',
     },
     {
       'slug': 'contact',

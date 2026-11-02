@@ -1,0 +1,20 @@
+{
+  "notifications": {
+    "title": "Notifications",
+    "unread": "unread",
+    "markAllRead": "Mark All as Read",
+    "noNotifications": "No Notifications",
+    "allCaughtUp": "You're all caught up!",
+    "newAlertsWillAppear": "New alerts will appear here.",
+    "meeting": "Meeting Notice",
+    "payment": "Payment Confirmation",
+    "penalty": "Penalty Notice",
+    "attendance": "Meeting Attendance",
+    "present": "Present",
+    "absent": "Absent",
+    "excused": "Excused",
+    "recordAttendance": "Record Attendance",
+    "meetingDate": "Meeting Date",
+    "meetingLocation": "Meeting Location"
+  }
+}

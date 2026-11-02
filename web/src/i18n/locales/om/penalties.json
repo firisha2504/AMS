@@ -1,0 +1,33 @@
+{
+  "penalties": {
+    "title": "Bulchiinsa Adabbii",
+    "totalPenalties": "Adabbii Waliigalaa",
+    "weeklyPenalty": "Adabbii Torbanii",
+    "monthlyPenalty": "Adabbii Ji'aa (Sanbata 4)",
+    "otherPenalty": "Adabbii Biroo",
+    "outstanding": "Hafe Kaffalamuu",
+    "settled": "Kaffalameera",
+    "waived": "Dhiifameera",
+    "pay": "Kaffali",
+    "waive": "Dhiisi",
+    "payPenalty": "Adabbii Kaffali",
+    "waivePenalty": "Adabbii Dhiisi",
+    "penalty": "Adabbii",
+    "week": "Torban",
+    "year": "Bara",
+    "reason": "Sababa",
+    "type": "Gosa",
+    "status": "Haala",
+    "date": "Guyyaa",
+    "paidDate": "Guyyaa Kaffalame",
+    "actions": "Gochaalee",
+    "selectMember": "Miseensa Filadhu",
+    "allPenalties": "Adabbii Hunda",
+    "waiveReason": "Sababa Dhiisuu (Barbaachisaa)",
+    "enterReason": "Sababa adabbii kana dhiisuuf galchi...",
+    "ruleExplanation": "Seera Adabbii: Sanbata 1ffaa darbeef 50 ETB, sanbata 4 walitti aansee darbeef adabbii ji'aa 100 ETB dabalataan murtaa'a.",
+    "noPenalties": "Adabbiin galmaa'e hin jiru",
+    "paymentSuccess": "Kaffaltiin adabbii milkaa'inaan raawwatameera!",
+    "waiveSuccess": "Adabbiin dhiifameera!"
+  }
+}

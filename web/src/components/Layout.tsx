@@ -6,9 +6,10 @@ import {
   Bell, Settings, Database, Globe,
   ChevronRight, UserCircle, History,
   AlertCircle, Menu, X, Search, ChevronDown,
+  Home, ArrowRight,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { NavLink, useNavigate } from 'react-router-dom';
+import { NavLink, useNavigate, Link } from 'react-router-dom';
 import { api } from '../lib/api';
 
 interface LayoutProps { children: ReactNode; }
@@ -39,13 +40,21 @@ const auditorNav = [
   { to: '/notifications', icon: Bell, labelKey: 'nav.notifications' },
 ];
 
+const memberNav = [
+  { to: '/dashboard', icon: LayoutDashboard, labelKey: 'nav.dashboard' },
+  { to: '/payment', icon: CreditCard, labelKey: 'Payments & Contributions' },
+  { to: '/attendance', icon: CalendarCheck, labelKey: 'nav.attendance' },
+  { to: '/profile', icon: UserCircle, labelKey: 'My Profile' },
+  { to: '/notifications', icon: Bell, labelKey: 'nav.notifications' },
+];
+
 export default function Layout({ children }: LayoutProps) {
   const { t, i18n } = useTranslation();
   const { user } = useAuth();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
   const [logoUrl, setLogoUrl] = React.useState<string | null>(null);
-  const navItems = user?.role === 'ADMIN' ? adminNav : auditorNav;
+  const navItems = user?.role === 'ADMIN' ? adminNav : user?.role === 'AUDITOR' ? auditorNav : memberNav;
 
   // Fetch logo on mount
   React.useEffect(() => {
@@ -127,6 +136,20 @@ export default function Layout({ children }: LayoutProps) {
           </button>
         </div>
 
+        {/* Back to Home Link (Sidebar) */}
+        <div className="px-3 pt-3 pb-1 border-b border-white/10">
+          <Link
+            to="/"
+            onClick={() => setSidebarOpen(false)}
+            className="group flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold text-emerald-300 hover:text-white bg-white/5 hover:bg-emerald-600/30 border border-emerald-500/30 transition-all shadow-xs"
+            title="Back to Public Website"
+          >
+            <Home size={18} className="text-emerald-400 group-hover:scale-110 transition-transform shrink-0" />
+            <span className="flex-1 font-semibold">{t('Back to Home', { defaultValue: 'Back to Home' })}</span>
+            <ArrowRight size={14} className="text-emerald-400/70 group-hover:translate-x-0.5 transition-transform shrink-0" />
+          </Link>
+        </div>
+
         {/* Nav */}
         <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
           {navItems.map(({ to, icon: Icon, labelKey }) => (
@@ -174,16 +197,27 @@ export default function Layout({ children }: LayoutProps) {
       {/* Main */}
       <main className="flex-1 overflow-y-auto">
         {/* Top bar */}
-        <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-4 sm:px-6 md:px-8 py-4 flex items-center justify-between gap-4">
+        <div className="sticky top-0 z-10 bg-white border-b border-gray-200 px-4 sm:px-6 md:px-8 py-3.5 flex items-center justify-between gap-3 sm:gap-4">
           
-          {/* Left side - Hamburger + Search */}
-          <div className="flex items-center gap-3 flex-1 max-w-2xl">
+          {/* Left side - Hamburger + Back to Home + Search */}
+          <div className="flex items-center gap-2.5 sm:gap-3 flex-1 max-w-2xl">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="lg:hidden text-gray-600 hover:bg-gray-100 p-2 rounded-lg transition-all"
+              className="lg:hidden text-gray-600 hover:bg-gray-100 p-2 rounded-lg transition-all shrink-0"
+              aria-label="Open sidebar"
             >
               <Menu size={20} />
             </button>
+
+            {/* Back to Home Button (Persistent on Mobile & Desktop) */}
+            <Link
+              to="/"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 transition-all shadow-xs shrink-0"
+              title="Return to Public Website Home"
+            >
+              <Home size={16} className="text-emerald-600 shrink-0" />
+              <span className="font-semibold">{t('Back to Home', { defaultValue: 'Back to Home' })}</span>
+            </Link>
 
             {/* Search bar */}
             <div className="relative flex-1 hidden sm:block">
@@ -247,8 +281,12 @@ export default function Layout({ children }: LayoutProps) {
                   </div>
                 )}
                 <div className="hidden md:block text-left">
-                  <p className="text-sm font-semibold text-gray-900">{user?.role === 'ADMIN' ? 'Admin' : user?.role}</p>
-                  <p className="text-xs text-gray-500">{user?.role === 'ADMIN' ? 'System Administrator' : 'Auditor'}</p>
+                  <p className="text-sm font-semibold text-gray-900">
+                    {user?.role === 'ADMIN' ? 'Admin' : user?.role === 'AUDITOR' ? 'Auditor' : (user?.member?.fullName || 'Member')}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {user?.role === 'ADMIN' ? 'System Administrator' : user?.role === 'AUDITOR' ? 'Auditor' : 'Gamtaa Member'}
+                  </p>
                 </div>
                 <ChevronDown size={16} className="text-gray-400 hidden md:inline" />
               </button>

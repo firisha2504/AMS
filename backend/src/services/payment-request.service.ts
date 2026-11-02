@@ -1,12 +1,15 @@
 import prisma from '../config/database.js';
 import { v4 as uuid } from 'uuid';
+import { executeUnifiedPayment, validateTransactionReferenceUnique } from './payment-allocation.service.js';
 
 export interface PaymentRequestData {
   memberId: string;
   amount: number;
-  paymentProvider: 'M_PESA' | 'TELEBIRR' | 'CBE' | 'EBIRR';
+  paymentProvider: 'M_PESA' | 'TELEBIRR' | 'CBE' | 'EBIRR' | 'BANK_TRANSFER';
   obligationId?: string;
+  penaltyId?: string;
   specialContributionObligationId?: string;
+  category?: 'WEEKLY' | 'PENALTY' | 'SPECIAL' | 'EMERGENCY' | 'HISTORICAL' | 'ALL';
 }
 
 /**
@@ -14,15 +17,27 @@ export interface PaymentRequestData {
  */
 export async function createPaymentRequest(data: PaymentRequestData) {
   // Get payment account details from system settings
-  const accountSetting = await prisma.systemSetting.findFirst({
-    where: { key: `payment_account_${data.paymentProvider.toLowerCase()}` }
+  const settingKey = `payment_account_${data.paymentProvider.toLowerCase()}`;
+  let accountSetting = await prisma.systemSetting.findFirst({
+    where: { key: settingKey }
   });
 
-  if (!accountSetting) {
-    throw new Error(`Payment account not configured for ${data.paymentProvider}`);
+  let accountDetails: any;
+  if (accountSetting) {
+    try {
+      accountDetails = JSON.parse(accountSetting.value);
+    } catch {
+      accountDetails = { value: accountSetting.value };
+    }
+  } else {
+    // Default fallback account details
+    accountDetails = {
+      provider: data.paymentProvider,
+      accountName: 'Gamtaan dargaggoota Melka Jabdu Qaxaa Araati',
+      accountNumber: data.paymentProvider === 'TELEBIRR' || data.paymentProvider === 'EBIRR' ? '+251900000000' : '1000234567890',
+      branch: 'Melka Jabdu'
+    };
   }
-
-  const accountDetails = JSON.parse(accountSetting.value);
   const referenceNumber = `${data.paymentProvider.substring(0, 3)}-${Date.now()}-${uuid().substring(0, 8)}`.toUpperCase();
   
   // Payment requests expire after 7 days
@@ -33,7 +48,9 @@ export async function createPaymentRequest(data: PaymentRequestData) {
       referenceNumber,
       memberId: data.memberId,
       obligationId: data.obligationId,
+      penaltyId: data.penaltyId,
       specialContributionObligationId: data.specialContributionObligationId,
+      category: data.category,
       amount: data.amount,
       paymentProvider: data.paymentProvider,
       accountDetails,
@@ -56,6 +73,13 @@ export async function getPaymentRequest(id: string) {
     where: { id },
     include: {
       member: { select: { fullName: true, memberId: true } },
+      penalty: { select: { reason: true, amount: true, isMonthly: true, weekNumber: true } },
+      obligation: { select: { weekNumber: true, year: true, contributionAmount: true } },
+      specialContributionObligation: {
+        include: {
+          specialContribution: { select: { title: true, type: true } }
+        }
+      },
       verifiedBy: { select: { username: true } }
     }
   });
@@ -70,6 +94,7 @@ export async function getMemberPaymentRequests(memberId: string) {
     orderBy: { createdAt: 'desc' },
     include: {
       obligation: { select: { weekNumber: true, year: true } },
+      penalty: { select: { reason: true, amount: true, isMonthly: true, weekNumber: true } },
       specialContributionObligation: { select: { specialContribution: { select: { title: true } } } }
     }
   });
@@ -96,7 +121,6 @@ export async function submitTransactionReference(
   }
 
   if (new Date() > paymentRequest.expiresAt) {
-    // Mark as expired
     await prisma.paymentRequest.update({
       where: { id },
       data: { status: 'EXPIRED' }
@@ -104,11 +128,16 @@ export async function submitTransactionReference(
     throw new Error('Payment request has expired');
   }
 
-  // Update payment request
+  // Duplicate check
+  const isUnique = await validateTransactionReferenceUnique(transactionReference);
+  if (!isUnique) {
+    throw new Error(`Transaction reference '${transactionReference}' has already been submitted or verified.`);
+  }
+
   const updated = await prisma.paymentRequest.update({
     where: { id },
     data: {
-      transactionReference,
+      transactionReference: transactionReference.trim(),
       receiptScreenshot,
       status: 'SUBMITTED'
     },
@@ -121,7 +150,9 @@ export async function submitTransactionReference(
 }
 
 /**
- * Verify a payment request (create actual payment record)
+ * Verify a payment request:
+ * Executes unified payment allocation, settles or updates the exact obligation/penalty,
+ * writes to financial ledger, and creates receipt.
  */
 export async function verifyPaymentRequest(
   id: string,
@@ -131,35 +162,37 @@ export async function verifyPaymentRequest(
 ) {
   const paymentRequest = await prisma.paymentRequest.findUnique({
     where: { id },
-    include: { obligation: true, specialContributionObligation: true, member: true }
+    include: { obligation: true, specialContributionObligation: true, penalty: true, member: true }
   });
 
   if (!paymentRequest) {
     throw new Error('Payment request not found');
   }
 
-  // Create payment record
-  const paymentId = `PAY-${Date.now()}-${uuid().substring(0, 6)}`.toUpperCase();
-  const payment = await prisma.payment.create({
-    data: {
-      paymentId,
-      memberId: paymentRequest.memberId,
-      obligationId: paymentRequest.obligationId,
-      specialContributionObligationId: paymentRequest.specialContributionObligationId,
-      amount: paymentRequest.amount,
-      paymentDate: new Date(),
-      paymentMethod: 'MOBILE_MONEY',
-      transactionReference: paymentRequest.transactionReference,
-      status: 'VERIFIED',
-      recordedById: verifiedById,
-      verifiedById,
-      verifiedAt: new Date(),
-      notes: `Verified via ${paymentRequest.paymentProvider} - ${verificationNotes || ''}`
-    }
+  if (paymentRequest.status === 'VERIFIED') {
+    throw new Error('Payment request is already verified');
+  }
+
+  // Convert provider to payment method
+  const paymentMethod = paymentRequest.paymentProvider === 'BANK_TRANSFER' ? 'BANK_TRANSFER' : 'MOBILE_MONEY';
+
+  // Execute unified payment
+  const result = await executeUnifiedPayment({
+    memberId: paymentRequest.memberId,
+    amount: Number(paymentRequest.amount),
+    paymentMethod,
+    transactionReference: paymentRequest.transactionReference || paymentRequest.referenceNumber,
+    notes: `Verified via ${paymentRequest.paymentProvider} (${verificationMethod}) - ${verificationNotes || ''}`,
+    recordedById: verifiedById,
+    obligationId: paymentRequest.obligationId || undefined,
+    penaltyId: paymentRequest.penaltyId || undefined,
+    specialContributionObligationId: paymentRequest.specialContributionObligationId || undefined,
+    category: (paymentRequest.category as any) || undefined,
+    isVerified: true,
   });
 
-  // Update payment request
-  await prisma.paymentRequest.update({
+  // Update payment request status
+  const updatedRequest = await prisma.paymentRequest.update({
     where: { id },
     data: {
       status: 'VERIFIED',
@@ -169,7 +202,7 @@ export async function verifyPaymentRequest(
     }
   });
 
-  return { paymentRequest: paymentRequest, payment };
+  return { paymentRequest: updatedRequest, payment: result.payment, receipt: result.receipt };
 }
 
 /**
@@ -202,7 +235,8 @@ export async function getPendingPaymentRequests(limit = 50) {
     take: limit,
     include: {
       member: { select: { fullName: true, memberId: true } },
-      obligation: { select: { weekNumber: true, year: true } }
+      obligation: { select: { weekNumber: true, year: true } },
+      penalty: { select: { reason: true, amount: true, isMonthly: true, weekNumber: true } }
     }
   });
 }

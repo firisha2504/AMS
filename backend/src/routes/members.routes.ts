@@ -595,6 +595,26 @@ router.post('/me/profile-picture', authenticate, upload.single('picture'), async
   sendSuccess(res, { profilePicture }, 'member.updated', lang);
 });
 
+// Admin: upload/update photo for specific member
+router.post('/:id/profile-picture', authenticate, authorize('ADMIN'), upload.single('picture'), async (req: AuthRequest, res: Response) => {
+  const lang = req.lang || 'om';
+  if (!req.file) {
+    sendError(res, 'general.validationError', lang, 400);
+    return;
+  }
+  const profilePicture = `/uploads/${req.file.filename}`;
+  const member = await prisma.member.findUnique({ where: { id: req.params.id } });
+  if (!member) {
+    sendError(res, 'member.notFound', lang, 404);
+    return;
+  }
+  const updated = await prisma.member.update({
+    where: { id: member.id },
+    data: { profilePicture },
+  });
+  sendSuccess(res, { profilePicture: updated.profilePicture }, 'member.updated', lang);
+});
+
 // Admin/Auditor profile — get own info
 router.get('/me/account', authenticate, authorize('ADMIN', 'AUDITOR'), async (req: AuthRequest, res: Response) => {
   const lang = req.lang || 'om';

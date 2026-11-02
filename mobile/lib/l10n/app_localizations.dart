@@ -12,55 +12,6 @@ import 'app_localizations_om.dart';
 
 /// Callers can lookup localized strings with an instance of AppLocalizations
 /// returned by `AppLocalizations.of(context)`.
-///
-/// Applications need to include `AppLocalizations.delegate()` in their app's
-/// `localizationDelegates` list, and the locales they support in the app's
-/// `supportedLocales` list. For example:
-///
-/// ```dart
-/// import 'l10n/app_localizations.dart';
-///
-/// return MaterialApp(
-///   localizationsDelegates: AppLocalizations.localizationsDelegates,
-///   supportedLocales: AppLocalizations.supportedLocales,
-///   home: MyApplicationHome(),
-/// );
-/// ```
-///
-/// ## Update pubspec.yaml
-///
-/// Please make sure to update your pubspec.yaml to include the following
-/// packages:
-///
-/// ```yaml
-/// dependencies:
-///   # Internationalization support.
-///   flutter_localizations:
-///     sdk: flutter
-///   intl: any # Use the pinned version from flutter_localizations
-///
-///   # Rest of dependencies
-/// ```
-///
-/// ## iOS Applications
-///
-/// iOS applications define key application metadata, including supported
-/// locales, in an Info.plist file that is built into the application bundle.
-/// To configure the locales supported by your app, you’ll need to edit this
-/// file.
-///
-/// First, open your project’s ios/Runner.xcworkspace Xcode workspace file.
-/// Then, in the Project Navigator, open the Info.plist file under the Runner
-/// project’s Runner folder.
-///
-/// Next, select the Information Property List item, select Add Item from the
-/// Editor menu, then select Localizations from the pop-up menu.
-///
-/// Select and expand the newly-created Localizations item then, for each
-/// locale your application supports, add a new item and select the locale
-/// you wish to add from the pop-up menu in the Value field. This list should
-/// be consistent with the languages listed in the AppLocalizations.supportedLocales
-/// property.
 abstract class AppLocalizations {
   AppLocalizations(String locale)
       : localeName = intl.Intl.canonicalizedLocale(locale.toString());
@@ -74,16 +25,6 @@ abstract class AppLocalizations {
   static const LocalizationsDelegate<AppLocalizations> delegate =
       _AppLocalizationsDelegate();
 
-  /// A list of this localizations delegate along with the default localizations
-  /// delegates.
-  ///
-  /// Returns a list of localizations delegates containing this delegate along with
-  /// GlobalMaterialLocalizations.delegate, GlobalCupertinoLocalizations.delegate,
-  /// and GlobalWidgetsLocalizations.delegate.
-  ///
-  /// Additional delegates can be added by appending to this list in
-  /// MaterialApp. This list does not have to be used at all if a custom list
-  /// of delegates is preferred or required.
   static const List<LocalizationsDelegate<dynamic>> localizationsDelegates =
       <LocalizationsDelegate<dynamic>>[
     delegate,
@@ -92,77 +33,74 @@ abstract class AppLocalizations {
     GlobalWidgetsLocalizations.delegate,
   ];
 
-  /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[
-    Locale('en'),
-    Locale('om')
+    Locale('om'),
+    Locale('en')
   ];
 
-  /// No description provided for @appTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Afosha Management System'**
   String get appTitle;
-
-  /// No description provided for @login.
-  ///
-  /// In en, this message translates to:
-  /// **'Login'**
   String get login;
-
-  /// No description provided for @dashboard.
-  ///
-  /// In en, this message translates to:
-  /// **'Dashboard'**
   String get dashboard;
-
-  /// No description provided for @profile.
-  ///
-  /// In en, this message translates to:
-  /// **'Profile'**
   String get profile;
-
-  /// No description provided for @contributions.
-  ///
-  /// In en, this message translates to:
-  /// **'Contributions'**
   String get contributions;
-
-  /// No description provided for @notifications.
-  ///
-  /// In en, this message translates to:
-  /// **'Notifications'**
   String get notifications;
-
-  /// No description provided for @logout.
-  ///
-  /// In en, this message translates to:
-  /// **'Logout'**
   String get logout;
-
-  /// No description provided for @unread.
-  ///
-  /// In en, this message translates to:
-  /// **'unread'**
   String get unread;
-
-  /// No description provided for @noNotifications.
-  ///
-  /// In en, this message translates to:
-  /// **'No Notifications'**
   String get noNotifications;
-
-  /// No description provided for @allCaughtUp.
-  ///
-  /// In en, this message translates to:
-  /// **'You\'re all caught up!'**
   String get allCaughtUp;
-
-  /// No description provided for @newAlertsWillAppear.
-  ///
-  /// In en, this message translates to:
-  /// **'New alerts will appear here.'**
   String get newAlertsWillAppear;
+
+  // Navigation Tabs
+  String get homeTab;
+  String get paymentsTab;
+  String get historyTab;
+  String get notificationsTab;
+  String get profileTab;
+
+  // Payment flow
+  String get payNow;
+  String get selectPaymentMethod;
+  String get paymentConfirmation;
+  String get processingPayment;
+  String get paymentSuccess;
+  String get paymentFailed;
+  String get transactionDetails;
+  String get digitalReceipt;
+
+  // Balances and Categories
+  String get outstandingBalance;
+  String get totalAmountPaid;
+  String get weeklyContributions;
+  String get penalties;
+  String get specialContributions;
+  String get emergencyContributions;
+  String get historicalContributions;
+
+  // Actions
+  String get save;
+  String get cancel;
+  String get submit;
+  String get tryAgain;
+  String get done;
+  String get close;
+  String get back;
+
+  // Fields and Statuses
+  String get amount;
+  String get date;
+  String get referenceNumber;
+  String get status;
+  String get verified;
+  String get pending;
+  String get requiredField;
+  String get invalidAmount;
+  String get emptyState;
+
+  // Payment Methods
+  String get telebirr;
+  String get cbe;
+  String get bankTransfer;
+  String get cash;
 }
 
 class _AppLocalizationsDelegate
@@ -183,17 +121,11 @@ class _AppLocalizationsDelegate
 }
 
 AppLocalizations lookupAppLocalizations(Locale locale) {
-  // Lookup logic when only language code is specified.
   switch (locale.languageCode) {
-    case 'en':
-      return AppLocalizationsEn();
     case 'om':
       return AppLocalizationsOm();
+    case 'en':
+    default:
+      return AppLocalizationsEn();
   }
-
-  throw FlutterError(
-      'AppLocalizations.delegate failed to load unsupported locale "$locale". This is likely '
-      'an issue with the localizations generation tool. Please file an issue '
-      'on GitHub with a reproducible sample app and the gen-l10n configuration '
-      'that was used.');
 }

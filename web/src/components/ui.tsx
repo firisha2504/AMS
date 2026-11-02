@@ -16,7 +16,7 @@ export function StatCard({ title, value, icon, color = 'from-primary-500 to-prim
     <div className="bg-white rounded-xl sm:rounded-2xl border border-slate-100 p-4 sm:p-6 shadow-sm hover:shadow-md transition-shadow duration-200">
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1.5 sm:mb-2">{title}</p>
+          <p className="text-xs font-bold text-slate-600 uppercase tracking-wider mb-1.5 sm:mb-2">{title}</p>
           <p className="text-xl sm:text-2xl md:text-3xl font-bold text-slate-900 leading-none break-words">{value}</p>
           {trend && (
             <p className={`text-xs mt-1.5 sm:mt-2 font-medium ${trendUp ? 'text-emerald-600' : 'text-red-500'}`}>
@@ -85,7 +85,7 @@ export function LoadingSpinner() {
   return (
     <div className="flex flex-col items-center justify-center py-16 gap-3">
       <div className="w-10 h-10 border-3 border-slate-200 border-t-green-600 rounded-full animate-spin" />
-      <p className="text-slate-400 text-sm">Loading...</p>
+      <p className="text-slate-600 font-medium text-sm">Loading...</p>
     </div>
   );
 }
@@ -114,7 +114,7 @@ export function Modal({ open, onClose, title, children, wide }: ModalProps) {
         <div className="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-100 flex-shrink-0">
           <h2 className="text-sm sm:text-base font-semibold text-slate-900">{title}</h2>
           <button onClick={onClose}
-            className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-all text-base sm:text-lg font-light">
+            className="w-7 h-7 sm:w-8 sm:h-8 flex items-center justify-center rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-all text-base sm:text-lg font-light">
             ✕
           </button>
         </div>
@@ -132,7 +132,7 @@ export function EmptyState({ message }: { message: string }) {
       <div className="w-14 h-14 bg-slate-100 rounded-full flex items-center justify-center mb-3">
         <span className="text-2xl">📭</span>
       </div>
-      <p className="text-slate-500 text-sm">{message}</p>
+      <p className="text-slate-600 font-medium text-sm">{message}</p>
     </div>
   );
 }
@@ -148,9 +148,9 @@ export function Table({ headers, children, empty }: {
       <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-slate-100">
+            <tr className="border-b border-slate-100 bg-slate-50/70">
               {headers.map((h) => (
-                <th key={h} className="px-3 sm:px-6 py-3 sm:py-3.5 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider whitespace-nowrap">
+                <th key={h} className="px-3 sm:px-6 py-3 sm:py-3.5 text-left text-xs font-bold text-slate-700 uppercase tracking-wider whitespace-nowrap">
                   {h}
                 </th>
               ))}
@@ -158,7 +158,7 @@ export function Table({ headers, children, empty }: {
           </thead>
           <tbody className="divide-y divide-slate-50">
             {empty
-              ? <tr><td colSpan={headers.length} className="px-3 sm:px-6 py-12 sm:py-16 text-center text-slate-400 text-sm">No data found</td></tr>
+              ? <tr><td colSpan={headers.length} className="px-3 sm:px-6 py-12 sm:py-16 text-center text-slate-600 font-medium text-sm">No data found</td></tr>
               : children
             }
           </tbody>
@@ -211,7 +211,7 @@ export function DateInput({
 
   return (
     <div>
-      {label && <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">{label}{required ? ' *' : ''}</label>}
+      {label && <label className="block text-xs font-bold text-slate-700 uppercase mb-1">{label}{required ? ' *' : ''}</label>}
       <input 
         type="text"
         inputMode="numeric"
@@ -257,7 +257,7 @@ export function TimeInput({
 
   return (
     <div>
-      {label && <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">{label}</label>}
+      {label && <label className="block text-xs font-bold text-slate-700 uppercase mb-1">{label}</label>}
       <input 
         type="text"
         inputMode="numeric"
@@ -303,15 +303,15 @@ export function Select({ value, onChange, options, label, placeholder, className
 
   return (
     <div ref={ref} className="relative">
-      {label && <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">{label}</label>}
+      {label && <label className="block text-xs font-bold text-slate-700 uppercase mb-1">{label}</label>}
       <button
         type="button"
         onClick={() => setOpen(!open)}
         className={`${inputClass} w-full text-left flex items-center justify-between ${className}`}
         style={{ minHeight: '44px' }}
       >
-        <span className={value ? 'text-slate-900' : 'text-slate-400'}>{selectedLabel}</span>
-        <span className="text-slate-400">▼</span>
+        <span className={value ? 'text-slate-900 font-medium' : 'text-slate-500'}>{selectedLabel}</span>
+        <span className="text-slate-500">▼</span>
       </button>
       
       {open && (
@@ -325,7 +325,7 @@ export function Select({ value, onChange, options, label, placeholder, className
                 setOpen(false);
               }}
               className={`w-full text-left px-4 py-2.5 hover:bg-slate-100 flex items-center ${
-                value === option.value ? 'bg-slate-50 text-primary-600 font-semibold' : 'text-slate-700'
+                value === option.value ? 'bg-slate-50 text-emerald-600 font-bold' : 'text-slate-800'
               }`}
             >
               {option.label}
@@ -358,6 +358,6 @@ export const btnDanger = [
 
 export const inputClass = [
   'w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900',
-  'placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-primary-500/30 focus:border-primary-500',
+  'placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500',
   'transition-all duration-150',
 ].join(' ');

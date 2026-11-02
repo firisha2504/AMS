@@ -1,0 +1,21 @@
+{
+  "auditor": {
+    "title": "Daashboordii Oditaraa",
+    "readOnlyNotice": "Sirni Dubbisa Qofaa Hojjetaa Jira (Read-Only)",
+    "categoryOverview": "Gabaasa Kaffaltiiwwan Hunda (Gosoota 7) - Oditara",
+    "categorySubtitle": "Hordoffii fi madaallii herregaa oditaraaf addaan baafame",
+    "financialInspection": "Madaallii fi To'annoo Herregaa",
+    "verifiedLedger": "Galmee Kaffaltii Mirkanaa'e",
+    "exportAuditReport": "Gabaasa Oditii Baasi",
+    "memberPaymentOverview": "Ibsa Kaffaltii Miseensotaa",
+    "paidRatio": "Dhibbeentaa Kaffaltii",
+    "recentTransactions": "Daldaloota Dhiyeenyaa",
+    "reports": {
+      "financialReport": "Gabaasa Maallaqaa",
+      "attendanceReport": "Gabaasa Argamaa",
+      "penaltyReport": "Gabaasa Adabbii",
+      "exportPdf": "PDF tti Baasi",
+      "exportExcel": "Excel tti Baasi"
+    }
+  }
+}

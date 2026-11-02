@@ -16,6 +16,8 @@ import {
 import { api } from '../lib/api';
 import { LoadingSpinner } from '../components/ui';
 import { useAuth } from '../contexts/AuthContext';
+import CategoryMetricsOverview, { type CategoryMetric } from '../components/CategoryMetricsOverview';
+import DashboardAnalyticsCharts from '../components/DashboardAnalyticsCharts';
 
 interface AdminDashboard {
   totalMembers: number;
@@ -26,6 +28,7 @@ interface AdminDashboard {
   paidPenalties: number;
   totalOutstandingBalance: number;
   totalSpecialContributions?: number;
+  categoryMetrics?: Record<string, CategoryMetric>;
 }
 
 interface ChartData { 
@@ -39,6 +42,7 @@ interface AuditorData {
   totalAmount: number;
   paidPercentage: number;
   unpaidPercentage: number;
+  categoryMetrics?: Record<string, CategoryMetric>;
   recentTransactions: Array<{
     id: string;
     date: string;
@@ -61,6 +65,7 @@ interface MemberData {
   nextSaturdayDate: string;
   outstandingBalance: number;
   totalPenalties: number;
+  categoryMetrics?: Record<string, CategoryMetric>;
   penalties: Array<{ id: string; amount: number; reason: string; createdAt: string }>;
   obligations: Array<{ id: string; weekNumber: number; totalDue: number; status: string }>;
   recentPayments: Array<{
@@ -76,7 +81,7 @@ interface MemberData {
 
 interface Activity {
   id: string;
-  type: 'member' | 'payment' | 'penalty' | 'special' | 'attendance' | 'approved';
+  type: string;
   message: string;
   time: string;
   icon: string;
@@ -91,6 +96,14 @@ export default function DashboardPage() {
   const [memberData, setMemberData] = useState<MemberData | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Live analytics state
+  const [attendanceAnalytics, setAttendanceAnalytics] = useState<any>(null);
+  const [financialAnalytics, setFinancialAnalytics] = useState<any>(null);
+  const [memberAnalytics, setMemberAnalytics] = useState<any>(null);
+  const [meetingAnalytics, setMeetingAnalytics] = useState<any>(null);
+  const [personalAnalytics, setPersonalAnalytics] = useState<any>(null);
+  const [activities, setActivities] = useState<Activity[]>([]);
+
   // Payment Modal State
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'TELEBIRR' | 'CBE' | 'BANK_TRANSFER' | 'CASH'>('TELEBIRR');
@@ -102,31 +115,57 @@ export default function DashboardPage() {
     method: string;
   } | null>(null);
 
-  const recentActivities: Activity[] = [
-    { id: '1', type: 'member', message: 'New member registered (Tolasa F.)', time: '2 hours ago', icon: 'user-plus' },
-    { id: '2', type: 'payment', message: 'Payment received (Abebe K. - 150 ETB)', time: '3 hours ago', icon: 'check' },
-    { id: '3', type: 'penalty', message: 'Penalty applied (Gemechu K. - 50 ETB)', time: '5 hours ago', icon: 'alert' },
-    { id: '4', type: 'special', message: 'Special contribution recorded', time: '6 hours ago', icon: 'gift' },
-    { id: '5', type: 'approved', message: 'Member registration approved', time: '8 hours ago', icon: 'check-circle' },
-    { id: '6', type: 'attendance', message: 'Saturday meeting attendance saved', time: 'Yesterday', icon: 'calendar' },
-  ];
+  const handleAttendanceFilter = async (range: string) => {
+    try {
+      const res = await api.get(`/analytics/attendance?range=${range}`);
+      setAttendanceAnalytics(res.data.data);
+    } catch (e) {
+      console.error('Failed to filter attendance analytics', e);
+    }
+  };
 
   useEffect(() => {
     const fetchDashboard = async () => {
       try {
         if (user?.role === 'ADMIN') {
-          const [dash, charts] = await Promise.all([
-            api.get('/dashboard/admin'),
-            api.get('/dashboard/charts'),
+          const [dash, charts, actRes, attRes, finRes, memRes, meetRes] = await Promise.all([
+            api.get('/dashboard/admin').catch(() => ({ data: { data: null } })),
+            api.get('/dashboard/charts').catch(() => ({ data: { data: null } })),
+            api.get('/dashboard/activities').catch(() => ({ data: { data: [] } })),
+            api.get('/analytics/attendance').catch(() => ({ data: { data: null } })),
+            api.get('/analytics/financial').catch(() => ({ data: { data: null } })),
+            api.get('/analytics/members').catch(() => ({ data: { data: null } })),
+            api.get('/analytics/meetings').catch(() => ({ data: { data: null } })),
           ]);
           setAdminData(dash.data.data);
           setChartData(charts.data.data);
+          setActivities(actRes.data.data || []);
+          setAttendanceAnalytics(attRes.data.data);
+          setFinancialAnalytics(finRes.data.data);
+          setMemberAnalytics(memRes.data.data);
+          setMeetingAnalytics(meetRes.data.data);
         } else if (user?.role === 'AUDITOR') {
-          const { data } = await api.get('/dashboard/auditor');
-          setAuditorData(data.data);
+          const [dash, actRes, attRes, finRes, memRes, meetRes] = await Promise.all([
+            api.get('/dashboard/auditor').catch(() => ({ data: { data: null } })),
+            api.get('/dashboard/activities').catch(() => ({ data: { data: [] } })),
+            api.get('/analytics/attendance').catch(() => ({ data: { data: null } })),
+            api.get('/analytics/financial').catch(() => ({ data: { data: null } })),
+            api.get('/analytics/members').catch(() => ({ data: { data: null } })),
+            api.get('/analytics/meetings').catch(() => ({ data: { data: null } })),
+          ]);
+          setAuditorData(dash.data.data);
+          setActivities(actRes.data.data || []);
+          setAttendanceAnalytics(attRes.data.data);
+          setFinancialAnalytics(finRes.data.data);
+          setMemberAnalytics(memRes.data.data);
+          setMeetingAnalytics(meetRes.data.data);
         } else if (user?.role === 'MEMBER') {
-          const { data } = await api.get('/dashboard/member');
-          setMemberData(data.data);
+          const [dash, personalRes] = await Promise.all([
+            api.get('/dashboard/member').catch(() => ({ data: { data: null } })),
+            api.get('/analytics/personal').catch(() => ({ data: { data: null } })),
+          ]);
+          setMemberData(dash.data.data);
+          setPersonalAnalytics(personalRes.data.data);
         }
       } catch (err) {
         console.error('Failed to load dashboard:', err);
@@ -162,22 +201,22 @@ export default function DashboardPage() {
   // 1. MEMBER DASHBOARD VIEW (Mockup Match)
   // ==========================================
   if (user?.role === 'MEMBER') {
-    const mem = memberData || {
-      fullName: 'Abebe Kebede',
-      memberId: 'MEM-001',
-      status: 'APPROVED',
-      profilePicture: undefined,
-      totalCredit: 150,
-      dueThisSaturday: 50,
-      totalPenalties: 50,
-      totalAmountPaid: 2400,
-      nextSaturdayDate: 'Tomorrow at 4:00 PM',
-      recentPayments: [
-        { id: '1', date: 'Apr 19, 2026', amount: 50, method: 'CBE Birr', status: 'VERIFIED' },
-        { id: '2', date: 'Apr 12, 2026', amount: 50, method: 'Telebirr', status: 'VERIFIED' },
-        { id: '3', date: 'Apr 05, 2026', amount: 50, method: 'E-Birr', status: 'VERIFIED' },
-        { id: '4', date: 'Mar 29, 2026', amount: 50, method: 'CBE Birr', status: 'VERIFIED' },
-      ],
+    const mem: MemberData = memberData || {
+      fullName: user?.fullName || 'Member',
+      memberId: user?.memberId || 'MEM-000',
+      status: user?.status || 'APPROVED',
+      profilePicture: user?.profilePicture || undefined,
+      totalCredit: 0,
+      dueThisSaturday: 0,
+      totalPenalties: 0,
+      outstandingBalance: 0,
+      totalAmountPaid: 0,
+      nextSaturdayDate: 'Saturday',
+      categoryMetrics: undefined,
+      penalties: [],
+      obligations: [],
+      attendancePercentage: 0,
+      recentPayments: [],
     };
 
     return (
@@ -196,24 +235,24 @@ export default function DashboardPage() {
               <div className="flex items-center gap-3">
                 <h1 className="text-2xl font-bold text-gray-900">{mem.fullName}</h1>
                 <span className="px-3 py-1 bg-emerald-50 text-emerald-700 text-xs font-semibold rounded-full border border-emerald-200">
-                  Active
+                  {mem.status || 'Active'}
                 </span>
               </div>
               <p className="text-sm text-gray-500 mt-0.5">
-                Member ID: <span className="font-semibold text-gray-700">{mem.memberId}</span> • Active Since 2024
+                Member ID: <span className="font-semibold text-gray-700">{mem.memberId}</span>
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-3 w-full md:w-auto">
-            <button
-              onClick={() => { setShowPaymentModal(true); setReceiptSuccess(null); }}
+            <Link
+              to="/payments"
               className="flex-1 md:flex-initial px-6 py-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white font-semibold rounded-xl shadow-md transition-all flex items-center justify-center gap-2 group cursor-pointer"
             >
               <CreditCard size={18} />
               <span>Make a Payment</span>
               <ArrowUpRight size={16} className="group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-            </button>
+            </Link>
           </div>
         </div>
 
@@ -263,7 +302,7 @@ export default function DashboardPage() {
               {Number(mem.totalPenalties).toLocaleString()} ETB
             </div>
             <p className="text-xs text-gray-500 mt-2">
-              {Number(mem.totalPenalties) > 0 ? '(For 1 missed week)' : 'No unpaid penalties'}
+              {Number(mem.totalPenalties) > 0 ? `Unpaid penalties: ${mem.totalPenalties} ETB` : 'No unpaid penalties'}
             </p>
           </div>
         </div>
@@ -275,13 +314,73 @@ export default function DashboardPage() {
               <Check size={18} />
             </div>
             <div>
-              <p className="text-sm font-bold text-emerald-900">Your account is in good standing!</p>
-              <p className="text-xs text-emerald-700">Weekly contributions and attendance records are verified.</p>
+              <p className="text-sm font-bold text-emerald-900">Personal Dashboard & Standing</p>
+              <p className="text-xs text-emerald-700">All data is verified against real PostgreSQL records.</p>
             </div>
           </div>
           <Link to="/attendance" className="text-xs font-semibold text-emerald-800 hover:underline">
             View Attendance →
           </Link>
+        </div>
+
+        {/* All 7 Payment Categories Tracking */}
+        {mem.categoryMetrics && (
+          <CategoryMetricsOverview
+            metrics={mem.categoryMetrics}
+            title={_t('dashboard.memberCategories', 'My Payment Categories (7 Independent Tracks)')}
+            subtitle={_t('dashboard.memberCategoriesSubtitle', 'Independent tracking for contributions, penalties, and special funds')}
+          />
+        )}
+
+        {/* Personal Attendance Analytics Section */}
+        <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-lg font-bold text-gray-900">My Attendance Analytics</h2>
+              <p className="text-xs text-gray-500">Personal attendance record and participation rate</p>
+            </div>
+            <span className="px-3 py-1 bg-emerald-100 text-emerald-800 text-xs font-bold rounded-full border border-emerald-300">
+              Attendance Rate: {personalAnalytics?.attendanceRate ?? mem.attendancePercentage ?? 0}%
+            </span>
+          </div>
+
+          {personalAnalytics?.attendanceHistory && personalAnalytics.attendanceHistory.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-gray-100 text-gray-500 text-xs uppercase font-semibold">
+                    <th className="py-2.5 px-3">Date</th>
+                    <th className="py-2.5 px-3">Meeting</th>
+                    <th className="py-2.5 px-3 text-center">Status</th>
+                    <th className="py-2.5 px-3">Remarks</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {personalAnalytics.attendanceHistory.map((h: any, idx: number) => (
+                    <tr key={idx} className="hover:bg-gray-50/60">
+                      <td className="py-2.5 px-3 text-xs text-gray-600 font-mono">{h.date}</td>
+                      <td className="py-2.5 px-3 font-medium text-gray-800">{h.meetingTitle}</td>
+                      <td className="py-2.5 px-3 text-center">
+                        <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                          h.status === 'PRESENT' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                          h.status === 'EXCUSED' ? 'bg-blue-50 text-blue-700 border border-blue-200' :
+                          'bg-rose-50 text-rose-700 border border-rose-200'
+                        }`}>
+                          {h.status}
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-3 text-xs text-gray-500">{h.remarks || '-'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="py-6 text-center text-gray-400 text-xs">
+              <Calendar size={24} className="mx-auto mb-1 text-gray-300" />
+              <p>No personal attendance records found yet</p>
+            </div>
+          )}
         </div>
 
         {/* Payment History List */}
@@ -291,28 +390,35 @@ export default function DashboardPage() {
               <h2 className="text-lg font-bold text-gray-900">Payment History</h2>
               <p className="text-xs text-gray-500">Recent verified contributions and receipts</p>
             </div>
-            <Link to="/financial" className="text-xs font-semibold text-emerald-600 hover:text-emerald-700">
+            <Link to="/payments" className="text-xs font-semibold text-emerald-600 hover:text-emerald-700">
               View All →
             </Link>
           </div>
 
-          <div className="divide-y divide-gray-100">
-            {mem.recentPayments.map((p, idx) => (
-              <div key={p.id || idx} className="py-3.5 flex items-center justify-between hover:bg-gray-50/80 px-2 rounded-lg transition-colors">
-                <div className="flex items-center gap-3">
-                  <div className="w-3 h-3 rounded-full bg-emerald-500 shadow-sm" />
-                  <div>
-                    <p className="text-sm font-semibold text-gray-800">Weekly Contribution</p>
-                    <p className="text-xs text-gray-500">{p.date} • {p.method}</p>
+          {mem.recentPayments.length > 0 ? (
+            <div className="divide-y divide-gray-100">
+              {mem.recentPayments.map((p, idx) => (
+                <div key={p.id || idx} className="py-3.5 flex items-center justify-between hover:bg-gray-50/80 px-2 rounded-lg transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="w-3 h-3 rounded-full bg-emerald-500 shadow-sm" />
+                    <div>
+                      <p className="text-sm font-semibold text-gray-800">Verified Contribution</p>
+                      <p className="text-xs text-gray-500">{p.date} • {p.method}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className="text-sm font-bold text-emerald-600">+{p.amount} ETB</span>
+                    <p className="text-xs text-gray-400 capitalize">{p.status.toLowerCase()}</p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <span className="text-sm font-bold text-emerald-600">+{p.amount} ETB</span>
-                  <p className="text-xs text-gray-400 capitalize">{p.status.toLowerCase()}</p>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="py-6 text-center text-gray-400 text-xs">
+              <CreditCard size={24} className="mx-auto mb-1 text-gray-300" />
+              <p>No payment history recorded yet</p>
+            </div>
+          )}
         </div>
 
         {/* ── MAKE PAYMENT MODAL (Mockup Center Image Match) ── */}
@@ -321,7 +427,7 @@ export default function DashboardPage() {
             <div className="bg-white rounded-3xl max-w-2xl w-full shadow-2xl border border-gray-200 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
               
               {/* Modal Header */}
-              <div className="bg-gradient-to-r from-navy-950 to-[#0B1F3A] text-white px-6 py-5 flex items-center justify-between">
+              <div className="bg-gradient-to-r from-[#060e24] to-[#0B1F3A] text-white px-6 py-5 flex items-center justify-between">
                 <div>
                   <h3 className="text-xl font-bold">Make a Payment</h3>
                   <p className="text-xs text-blue-200">Gamtaan dargaggoota Melka Jabdu Qaxaa Araati</p>
@@ -456,7 +562,7 @@ export default function DashboardPage() {
                   <div className="flex items-center justify-center gap-4 pt-2">
                     <button
                       onClick={() => alert(`Receipt ${receiptSuccess.receiptNumber} downloaded as PDF.`)}
-                      className="px-5 py-2.5 bg-navy-900 text-white rounded-xl text-sm font-semibold flex items-center gap-2 hover:bg-navy-800 shadow"
+                      className="px-5 py-2.5 bg-[#0a1931] text-white rounded-xl text-sm font-semibold flex items-center gap-2 hover:bg-[#0d1e5e] shadow transition-colors"
                     >
                       <Download size={16} />
                       Download Receipt
@@ -478,22 +584,17 @@ export default function DashboardPage() {
   }
 
   // ==========================================
-  // 2. AUDITOR DASHBOARD VIEW (Mockup Match)
+  // 2. AUDITOR DASHBOARD VIEW
   // ==========================================
   if (user?.role === 'AUDITOR') {
     const audit = auditorData || {
-      totalMembers: 248,
-      totalPaid: 212,
-      totalDue: 36,
-      totalAmount: 158750,
-      paidPercentage: 85.5,
-      unpaidPercentage: 14.5,
-      recentTransactions: [
-        { id: '1', date: 'Apr 26, 2026', memberName: 'Abebe Kebede', amount: 50, status: 'VERIFIED', method: 'CBE Birr' },
-        { id: '2', date: 'Apr 26, 2026', memberName: 'Gemechu Keneni', amount: 100, status: 'VERIFIED', method: 'Telebirr' },
-        { id: '3', date: 'Apr 25, 2026', memberName: 'Tsion Daniel', amount: 50, status: 'VERIFIED', method: 'E-Birr' },
-        { id: '4', date: 'Apr 24, 2026', memberName: 'Chala Beyene', amount: 50, status: 'VERIFIED', method: 'Bank Transfer' },
-      ],
+      totalMembers: 0,
+      totalPaid: 0,
+      totalDue: 0,
+      totalAmount: 0,
+      paidPercentage: 0,
+      unpaidPercentage: 0,
+      recentTransactions: [],
     };
 
     const donutData = [
@@ -515,7 +616,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* 4 Summary Cards (Mockup Top Row) */}
+        {/* 4 Summary Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
           <div className="bg-white rounded-2xl p-5 sm:p-6 border border-gray-200 shadow-sm">
             <div className="flex items-center justify-between mb-3">
@@ -532,7 +633,7 @@ export default function DashboardPage() {
               <div className="p-2 bg-emerald-50 text-emerald-600 rounded-xl"><CheckCircle size={20} /></div>
             </div>
             <div className="text-3xl font-black text-emerald-600">{audit.totalPaid}</div>
-            <p className="text-xs text-gray-500 mt-2">Satisfied Saturday obligations</p>
+            <p className="text-xs text-gray-500 mt-2">Satisfied obligations</p>
           </div>
 
           <div className="bg-white rounded-2xl p-5 sm:p-6 border border-gray-200 shadow-sm">
@@ -553,6 +654,25 @@ export default function DashboardPage() {
             <p className="text-xs text-emerald-600 mt-2 font-medium">Cumulative verified ledger</p>
           </div>
         </div>
+
+        {/* 7 Payment Categories Overview for Auditor */}
+        {audit.categoryMetrics && (
+          <CategoryMetricsOverview
+            metrics={audit.categoryMetrics}
+            title={_t('auditor.categoryOverview', 'Auditor Oversight: All 7 Payment Categories')}
+            subtitle={_t('auditor.categorySubtitle', 'Verified collection, outstanding obligations, and audit allocation breakdown')}
+          />
+        )}
+
+        {/* Complete Dedicated Analytics & Charts for Auditor */}
+        <DashboardAnalyticsCharts
+          attendanceData={attendanceAnalytics}
+          financialData={financialAnalytics}
+          memberData={memberAnalytics}
+          meetingData={meetingAnalytics}
+          onAttendanceFilterChange={handleAttendanceFilter}
+          isAuditor={true}
+        />
 
         {/* 2-Column Auditor Layout: Donut Chart & Transactions */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -606,38 +726,45 @@ export default function DashboardPage() {
                 </Link>
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-sm">
-                  <thead>
-                    <tr className="border-b border-gray-100 text-gray-400 text-xs uppercase font-medium">
-                      <th className="py-3 px-3">Date</th>
-                      <th className="py-3 px-3">Member</th>
-                      <th className="py-3 px-3">Method</th>
-                      <th className="py-3 px-3 text-right">Amount</th>
-                      <th className="py-3 px-3 text-center">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {audit.recentTransactions.map((tx) => (
-                      <tr key={tx.id} className="hover:bg-gray-50/60">
-                        <td className="py-3 px-3 text-gray-600 text-xs font-mono">{tx.date}</td>
-                        <td className="py-3 px-3 font-semibold text-gray-800">{tx.memberName}</td>
-                        <td className="py-3 px-3 text-xs text-gray-500">{tx.method}</td>
-                        <td className="py-3 px-3 text-right font-bold text-emerald-600">+{tx.amount} ETB</td>
-                        <td className="py-3 px-3 text-center">
-                          <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                            Verified
-                          </span>
-                        </td>
+              {audit.recentTransactions.length > 0 ? (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-sm">
+                    <thead>
+                      <tr className="border-b border-gray-100 text-gray-700 text-xs uppercase font-bold bg-gray-50/50">
+                        <th className="py-3 px-3">Date</th>
+                        <th className="py-3 px-3">Member</th>
+                        <th className="py-3 px-3">Method</th>
+                        <th className="py-3 px-3 text-right">Amount</th>
+                        <th className="py-3 px-3 text-center">Status</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {audit.recentTransactions.map((tx) => (
+                        <tr key={tx.id} className="hover:bg-gray-50/60">
+                          <td className="py-3 px-3 text-gray-600 text-xs font-mono">{tx.date}</td>
+                          <td className="py-3 px-3 font-semibold text-gray-800">{tx.memberName}</td>
+                          <td className="py-3 px-3 text-xs text-gray-500">{tx.method}</td>
+                          <td className="py-3 px-3 text-right font-bold text-emerald-600">+{tx.amount} ETB</td>
+                          <td className="py-3 px-3 text-center">
+                            <span className="px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              Verified
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className="py-12 text-center text-gray-400 text-xs">
+                  <FileText size={24} className="mx-auto mb-1 text-gray-300" />
+                  <p>No verified transactions recorded yet</p>
+                </div>
+              )}
             </div>
 
             <div className="pt-4 mt-4 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
-              <span>Showing 4 of cumulative verified transactions</span>
+              <span>Showing {audit.recentTransactions.length} of cumulative verified transactions</span>
               <div className="flex gap-2">
                 <Link to="/reports" className="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg font-medium flex items-center gap-1.5">
                   <FileText size={14} /> Export Audit Report
@@ -651,34 +778,33 @@ export default function DashboardPage() {
   }
 
   // ==========================================
-  // 3. ADMIN DASHBOARD VIEW (Mockup Top-Right)
+  // 3. ADMIN DASHBOARD VIEW
   // ==========================================
   const adm = adminData || {
-    totalMembers: 248,
-    activeMembers: 212,
-    pendingMembers: 36,
-    weeklyContributions: 142500,
-    unpaidPenalties: 2500,
-    paidPenalties: 13750,
-    totalOutstandingBalance: 4200,
+    totalMembers: 0,
+    activeMembers: 0,
+    pendingMembers: 0,
+    weeklyContributions: 0,
+    unpaidPenalties: 0,
+    paidPenalties: 0,
+    totalOutstandingBalance: 0,
   };
 
   const totalIncome = Number(adm.weeklyContributions) + Number(adm.paidPenalties);
+  const paidRate = adm.totalMembers > 0 ? Math.round((adm.activeMembers / adm.totalMembers) * 100) : 0;
+  const unpaidRate = 100 - paidRate;
 
   // Income Overview Bar Chart Data
-  const barChartData = chartData?.trends || [
-    { month: 'Jan', contributions: 25000, penalties: 1200, other: 800 },
-    { month: 'Feb', contributions: 28000, penalties: 900, other: 500 },
-    { month: 'Mar', contributions: 31000, penalties: 1500, other: 1200 },
-    { month: 'Apr', contributions: 33000, penalties: 1100, other: 600 },
-    { month: 'May', contributions: 35000, penalties: 1400, other: 900 },
-    { month: 'Jun', contributions: 38000, penalties: 1600, other: 1500 },
-  ];
+  const barChartData = chartData?.trends && chartData.trends.length > 0
+    ? chartData.trends
+    : [
+        { month: 'Current', contributions: Number(adm.weeklyContributions), penalties: Number(adm.paidPenalties), other: 0 }
+      ];
 
   const adminDonut = [
-    { name: 'Paid', value: adm.activeMembers || 212, color: '#10b981' },
-    { name: 'Not Paid', value: adm.pendingMembers || 36, color: '#f59e0b' },
-  ];
+    { name: 'Paid', value: adm.activeMembers || 0, color: '#10b981' },
+    { name: 'Not Paid', value: adm.pendingMembers || 0, color: '#f59e0b' },
+  ].filter(d => d.value > 0);
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
@@ -697,7 +823,7 @@ export default function DashboardPage() {
           </Link>
           <Link
             to="/financial"
-            className="px-4 py-2 bg-navy-900 hover:bg-navy-800 text-white rounded-xl text-sm font-semibold shadow-sm flex items-center gap-2"
+            className="px-4 py-2 bg-[#0a1931] hover:bg-[#0d1e5e] text-white rounded-xl text-sm font-semibold shadow-sm flex items-center gap-2 transition-colors"
           >
             <DollarSign size={16} /> Record Payment
           </Link>
@@ -712,7 +838,7 @@ export default function DashboardPage() {
             <div className="p-2 bg-blue-50 text-blue-600 rounded-xl"><Users size={20} /></div>
           </div>
           <div className="text-3xl font-black text-gray-900">{adm.totalMembers}</div>
-          <p className="text-xs text-emerald-600 mt-2 font-semibold">↑ +12% from last month</p>
+          <p className="text-xs text-emerald-600 mt-2 font-semibold">Active Registered Community</p>
         </div>
 
         <div className="bg-white rounded-2xl p-5 sm:p-6 border border-gray-200 shadow-sm">
@@ -721,7 +847,7 @@ export default function DashboardPage() {
             <div className="p-2 bg-emerald-50 text-emerald-600 rounded-xl"><DollarSign size={20} /></div>
           </div>
           <div className="text-2xl sm:text-3xl font-black text-emerald-600">{totalIncome.toLocaleString()} ETB</div>
-          <p className="text-xs text-emerald-600 mt-2 font-semibold">↑ +8% collection rate</p>
+          <p className="text-xs text-emerald-600 mt-2 font-semibold">Confirmed cash ledger</p>
         </div>
 
         <div className="bg-white rounded-2xl p-5 sm:p-6 border border-gray-200 shadow-sm">
@@ -730,7 +856,7 @@ export default function DashboardPage() {
             <div className="p-2 bg-amber-50 text-amber-600 rounded-xl"><Calendar size={20} /></div>
           </div>
           <div className="text-3xl font-black text-gray-900">{adm.activeMembers} / {adm.totalMembers}</div>
-          <p className="text-xs text-emerald-600 mt-2 font-semibold">85.5% participation</p>
+          <p className="text-xs text-emerald-600 mt-2 font-semibold">{paidRate}% participation</p>
         </div>
 
         <div className="bg-white rounded-2xl p-5 sm:p-6 border border-gray-200 shadow-sm">
@@ -739,9 +865,28 @@ export default function DashboardPage() {
             <div className="p-2 bg-rose-50 text-rose-600 rounded-xl"><AlertTriangle size={20} /></div>
           </div>
           <div className="text-3xl font-black text-rose-600">{adm.pendingMembers}</div>
-          <p className="text-xs text-emerald-600 mt-2 font-semibold">↓ -4% pending dues</p>
+          <p className="text-xs text-rose-600 mt-2 font-semibold">Pending obligations</p>
         </div>
       </div>
+
+      {/* All 7 Payment Categories Overview for Admin */}
+      {adm.categoryMetrics && (
+        <CategoryMetricsOverview
+          metrics={adm.categoryMetrics}
+          title={_t('admin.categoryOverview', 'Administrative Overview: All 7 Payment Categories')}
+          subtitle={_t('admin.categorySubtitle', 'Real-time financial status, progress, and obligation counts per category')}
+        />
+      )}
+
+      {/* Complete Dedicated Analytics & Charts for Admin */}
+      <DashboardAnalyticsCharts
+        attendanceData={attendanceAnalytics}
+        financialData={financialAnalytics}
+        memberData={memberAnalytics}
+        meetingData={meetingAnalytics}
+        onAttendanceFilterChange={handleAttendanceFilter}
+        isAuditor={false}
+      />
 
       {/* 2 Charts Grid (Income Overview Bar + Payment Status Donut) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -778,14 +923,14 @@ export default function DashboardPage() {
         <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm flex flex-col justify-between">
           <div>
             <h3 className="text-base font-bold text-gray-900 mb-1">Payment Status</h3>
-            <p className="text-xs text-gray-500">Current Saturday completion ratio</p>
+            <p className="text-xs text-gray-500">Current obligation completion ratio</p>
           </div>
 
           <div className="h-56 relative flex items-center justify-center my-2">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
-                  data={adminDonut}
+                  data={adminDonut.length > 0 ? adminDonut : [{ name: 'None', value: 1, color: '#e2e8f0' }]}
                   cx="50%"
                   cy="50%"
                   innerRadius={65}
@@ -801,7 +946,7 @@ export default function DashboardPage() {
               </PieChart>
             </ResponsiveContainer>
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-              <span className="text-3xl font-black text-gray-900">85.5%</span>
+              <span className="text-3xl font-black text-gray-900">{paidRate}%</span>
               <span className="text-xs font-semibold text-gray-500">Paid Rate</span>
             </div>
           </div>
@@ -809,17 +954,17 @@ export default function DashboardPage() {
           <div className="space-y-2 pt-4 border-t border-gray-100 text-xs">
             <div className="flex justify-between items-center">
               <span className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> Paid</span>
-              <span className="font-bold text-gray-800">85.5% ({adm.activeMembers})</span>
+              <span className="font-bold text-gray-800">{paidRate}% ({adm.activeMembers})</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-amber-500" /> Not Paid</span>
-              <span className="font-bold text-gray-800">14.5% ({adm.pendingMembers})</span>
+              <span className="font-bold text-gray-800">{unpaidRate}% ({adm.pendingMembers})</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* 2-Column: Recent Activities & Quick Actions */}
+      {/* 2-Column: Live Activities & Quick Actions */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
           <div className="flex items-center justify-between mb-4">
@@ -827,24 +972,31 @@ export default function DashboardPage() {
             <span className="text-xs text-gray-500">Live operational feed</span>
           </div>
 
-          <div className="divide-y divide-gray-100">
-            {recentActivities.map((act) => (
-              <div key={act.id} className="py-3 flex items-center justify-between text-sm hover:bg-gray-50/60 px-2 rounded-lg transition-colors">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-lg bg-gray-100 text-gray-600">
-                    {act.icon === 'user-plus' && <UserPlus size={16} className="text-blue-600" />}
-                    {act.icon === 'check' && <Check size={16} className="text-emerald-600" />}
-                    {act.icon === 'alert' && <AlertTriangle size={16} className="text-rose-600" />}
-                    {act.icon === 'gift' && <Gift size={16} className="text-purple-600" />}
-                    {act.icon === 'check-circle' && <UserCheck size={16} className="text-teal-600" />}
-                    {act.icon === 'calendar' && <Calendar size={16} className="text-amber-600" />}
+          {activities.length > 0 ? (
+            <div className="divide-y divide-gray-100">
+              {activities.map((act) => (
+                <div key={act.id} className="py-3 flex items-center justify-between text-sm hover:bg-gray-50/60 px-2 rounded-lg transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-lg bg-gray-100 text-gray-600">
+                      {act.icon === 'user-plus' && <UserPlus size={16} className="text-blue-600" />}
+                      {act.icon === 'check' && <Check size={16} className="text-emerald-600" />}
+                      {act.icon === 'alert' && <AlertTriangle size={16} className="text-rose-600" />}
+                      {act.icon === 'gift' && <Gift size={16} className="text-purple-600" />}
+                      {act.icon === 'check-circle' && <UserCheck size={16} className="text-teal-600" />}
+                      {act.icon === 'calendar' && <Calendar size={16} className="text-amber-600" />}
+                    </div>
+                    <span className="font-medium text-gray-800">{act.message}</span>
                   </div>
-                  <span className="font-medium text-gray-800">{act.message}</span>
+                  <span className="text-xs text-gray-400">{act.time}</span>
                 </div>
-                <span className="text-xs text-gray-400">{act.time}</span>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          ) : (
+            <div className="py-8 text-center text-gray-400 text-xs">
+              <Activity size={24} className="mx-auto mb-1 text-gray-300" />
+              <p>No operational activities recorded yet</p>
+            </div>
+          )}
         </div>
 
         {/* Quick Actions Card */}
@@ -869,7 +1021,7 @@ export default function DashboardPage() {
             </Link>
           </div>
 
-          <div className="mt-4 pt-4 border-t border-gray-100 text-xs text-gray-400 text-center">
+          <div className="mt-4 pt-4 border-t border-gray-100 text-xs text-gray-500 text-center font-medium">
             Gamtaan dargaggoota Melka Jabdu Qaxaa Araati
           </div>
         </div>

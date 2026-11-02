@@ -16,6 +16,8 @@ import NotificationsPage from './pages/NotificationsPage';
 import BackupPage from './pages/BackupPage';
 import PublicHomePage from './pages/public/PublicHomePage';
 import AboutPage from './pages/public/AboutPage';
+import PublicPaymentPage from './pages/public/PublicPaymentPage';
+import ContactPage from './pages/public/ContactPage';
 import ProfilePage from './pages/ProfilePage';
 import PublicContentPage from './pages/PublicContentPage';
 import TeamManagementPage from './pages/TeamManagementPage';
@@ -87,6 +89,8 @@ function App() {
           <Routes>
             <Route path="/" element={<PublicHomePage />} />
             <Route path="/about" element={<AboutPage />} />
+            <Route path="/payment" element={<PublicPaymentPage />} />
+            <Route path="/contact" element={<ContactPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             <Route path="/change-password" element={<ChangePasswordPage />} />

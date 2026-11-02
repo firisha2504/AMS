@@ -1,0 +1,58 @@
+{
+  "payments": {
+    "title": "Kaffaltiiwwan",
+    "makePayment": "Kaffaltii Raawwadhu",
+    "recordPayment": "Kaffaltii Galmeessi",
+    "paymentMethod": "Mala Kaffaltii",
+    "transactionRef": "Lakkoofsa Daldalaa",
+    "amount": "Hanga (ETB)",
+    "date": "Guyyaa",
+    "status": "Haala",
+    "member": "Miseensa",
+    "selectMember": "Miseensa Filadhu",
+    "receipt": "Nagahee",
+    "receiptNumber": "Lakk. Nagahee",
+    "notes": "Yaadannoo",
+    "addNotes": "Yaadannoo Dabali",
+    "paymentHistory": "Seenaa Kaffaltii",
+    "recentPayments": "Kaffaltii Dhiyeenyaa",
+    "noPayments": "Kaffaltiin hin jiru",
+    "paymentRecorded": "Kaffaltiin milkaa'inaan galmeeffameera!",
+    "paymentVerified": "Kaffaltiin mirkanaa'eera!",
+    "paymentRejected": "Kaffaltiin didameera!",
+    "bulkRecord": "Kaffaltii Waloo",
+    "categories": {
+      "weekly": "Kaffaltii Torbanii",
+      "weeklyPenalty": "Adabbii Torbanii",
+      "monthlyPenalty": "Adabbii Ji'aa",
+      "otherPenalty": "Adabbii Biroo",
+      "special": "Gumaacha Addaa",
+      "emergency": "Gumaacha Hatattamaa",
+      "historical": "Seenaa Hirmaataa"
+    },
+    "allocations": {
+      "title": "Hirmaannaa Gosoota Kaffaltii",
+      "subtitle": "Kaffaltii tokko keessatti gosoota adda baafamanii galmaa'an",
+      "splitNotice": "Kaffaltiin kun gosoota hedduuf hirameera",
+      "singleNotice": "Kaffaltii gosa tokko qofaa",
+      "originalOwed": "Waliigala Oowamaa",
+      "amountAllocated": "Hanga Kaffalame",
+      "remaining": "Haftee",
+      "allocationId": "Lakk. Hirmaannaa",
+      "breakdown": "Bal'ina Hirmaannaa"
+    },
+    "methods": {
+      "cbe": "CBE Birr",
+      "telebirr": "Telebirr",
+      "ebirr": "E-Birr",
+      "bankTransfer": "Dabarsa Baankii",
+      "cash": "Kaffaltii Kaashii (Waajjira)"
+    },
+    "verifyConfirm": "Mirkaneessa Kaffaltii Mirkaneessi",
+    "verifySuccess": "Kaffaltiin Mirkanaa'eera",
+    "rollback": "Kaffaltii Deebisi",
+    "rollbackConfirm": "Kaffaltii deebisuuf mirkaneessaa?",
+    "rollbackSuccess": "Kaffaltiin deebi'eera",
+    "rollbackReason": "Sababa Deebisuu"
+  }
+}

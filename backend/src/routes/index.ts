@@ -11,6 +11,7 @@ import specialContributionsRoutes from './special-contributions.routes.js';
 import publicRoutes from './public.routes.js';
 import teamRoutes from './team.routes.js';
 import joiningObligationsRoutes from './joining-obligations.routes.js';
+import analyticsRoutes from './analytics.routes.js';
 import { authenticate } from '../middleware/auth.js';
 
 const router = Router();
@@ -27,6 +28,7 @@ router.use('/special-contributions', specialContributionsRoutes);
 router.use('/public', publicRoutes);
 router.use('/team', teamRoutes);
 router.use('/joining-obligations', joiningObligationsRoutes);
+router.use('/analytics', analyticsRoutes);
 
 router.get('/health', (_req, res) => {
   res.json({ status: 'ok', service: 'AMS API', timestamp: new Date().toISOString() });

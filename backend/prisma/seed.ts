@@ -60,6 +60,69 @@ async function main() {
       label: 'SMS Meeting Reminder (Afan Oromo)',
       labelOm: 'Ergaa SMS Yaadachiisa Walgahii (Afaan Oromoo)',
     },
+    {
+      key: 'payment_account_cbe',
+      value: JSON.stringify({
+        provider: 'CBE',
+        bankName: 'Commercial Bank of Ethiopia (CBE)',
+        accountName: 'Gamtaan dargaggoota Melka Jabdu Qaxaa Araati',
+        accountNumber: '1000234567890',
+        branch: 'Melka Jabdu / Dire Dawa',
+        description: 'Official CBE Account for Weekly and Special Contributions'
+      }),
+      label: 'CBE Payment Account Details',
+      labelOm: 'Herrega Baankii Daldala Itoophiyaa (CBE)',
+    },
+    {
+      key: 'payment_account_telebirr',
+      value: JSON.stringify({
+        provider: 'TELEBIRR',
+        accountName: 'Gamtaa Dargaggoota Melka Jabdu',
+        accountNumber: '+251900000000',
+        merchantCode: '789456',
+        description: 'Telebirr Mobile Money Merchant Account'
+      }),
+      label: 'Telebirr Payment Account Details',
+      labelOm: 'Herrega Kaffaltii Telebirr',
+    },
+    {
+      key: 'payment_account_ebirr',
+      value: JSON.stringify({
+        provider: 'EBIRR',
+        accountName: 'Gamtaa Dargaggoota Melka Jabdu',
+        accountNumber: '+251900000000',
+        merchantCode: '45213',
+        description: 'eBirr Digital Wallet Payment Gateway'
+      }),
+      label: 'eBirr Payment Account Details',
+      labelOm: 'Herrega Kaffaltii eBirr',
+    },
+    {
+      key: 'payment_account_bank_transfer',
+      value: JSON.stringify({
+        provider: 'BANK_TRANSFER',
+        bankName: 'Commercial Bank of Ethiopia / Awash Bank',
+        accountName: 'Gamtaan dargaggoota Melka Jabdu Qaxaa Araati',
+        accountNumber: '1000234567890',
+        branch: 'Melka Jabdu Branch',
+        swiftCode: 'CBETETAA',
+        description: 'Direct Bank Deposit or Wire Transfer'
+      }),
+      label: 'Bank Transfer Account Details',
+      labelOm: 'Herrega Dabarsa Baankii Kallattii',
+    },
+    {
+      key: 'payment_account_m_pesa',
+      value: JSON.stringify({
+        provider: 'M_PESA',
+        accountName: 'Gamtaa Dargaggoota Melka Jabdu',
+        accountNumber: '+251700000000',
+        shortCode: '56789',
+        description: 'Safaricom M-Pesa Mobile Money'
+      }),
+      label: 'M-Pesa Payment Account Details',
+      labelOm: 'Herrega Kaffaltii M-Pesa',
+    },
   ];
 
   for (const setting of defaultSettings) {
@@ -97,78 +160,102 @@ async function main() {
     },
     {
       slug: 'heera-danbii',
-      title: 'Rules & Regulations',
-      titleOm: 'Heera fi Danbii',
-      content: `Based on the Federal Democratic Republic of Ethiopia (FDRE) Constitution Article 31, which states: "Every person has the right to freedom of association for any cause or purpose, in accordance with the law, culture, and traditions of society."
+      title: 'Laws & Regulations (Seeraa fi Dambii)',
+      titleOm: 'Seeraa fi Dambii Gamtaa',
+      content: `PROPOSED INITIAL ORGANIZATIONAL RULES (WIXINEE DAMBII JALQABAA)
+Note: These are proposed initial organizational rules subject to formal review and adoption by the General Assembly, and remain editable by authorized administrators.
 
-Therefore, the Gamtaa Dargaggoota Melka Jabdu (Youth Association of Melka Jabdu) was established on January 1, 2017 (Ethiopian Calendar), based on this constitutional provision as a legally recognized association, founded on national law and respecting the culture and traditions of the people.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+CONSTITUTIONAL FOUNDATION (HEERA MOOTUMMAA RDFI)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Constitution of the Federal Democratic Republic of Ethiopia (FDRE), Article 31:
+"Every person has the right to freedom of association for any cause or purpose, in accordance with the law, culture, and traditions of society."
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Based on this constitutional provision, Gamtaan dargaggoota Melka Jabdu Qaxaa Araati was established on Meskerem 1, 2017 Ethiopian Calendar as a legally recognized youth association founded on national law and respecting the cultures and traditions of the community.
 
-OBJECTIVES, FUNDAMENTAL PRINCIPLES, MEMBERSHIP CONDITIONS, RIGHTS AND RESPONSIBILITIES OF MEMBERS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SEERAA FI DAMBII GAMTAA (ORGANIZATIONAL RULES 1 - 10)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Rule 1: Purpose of the Association (Seera 1: Kaayyoo Gamtaa)
+Our association is established to strengthen unity, mutual support, love, respect, and positive relationships among the youth.
 
-Core Objectives of the Association
+Rule 2: Mutual Respect (Seera 2: Kabaja Walii)
+Every member must respect the culture, religion, opinions, and perspectives of other members.
 
-The Gamtaa Dargaggoota Melka Jabdu has the following objectives:
+Rule 3: Weekly Contribution (Seera 3: Kaffaltii Torbanii)
+Every member must pay the weekly contribution established by the organization on time. Contribution day is Saturday.
 
-1. To educate, build, and enable young people to live together and support one another.
+Rule 4: Payment Penalties (Seera 4: Adabbii Kaffaltii)
+Any member who fails to pay the weekly contribution on time shall pay penalties as determined in the association's bylaws.
 
-2. To strengthen the unity and solidarity of young people.
+Rule 5: Special Contributions (Seera 5: Gumaacha Addaa)
+When an exceptional event occurs for a member, such as bereavement or family educational graduation, other members make contributions per the association's decision.
 
-3. To assist young people affected by natural or man-made disasters by pooling small resources together.
+Rule 6: Mutual Support (Seera 6: Wal-gargaarsa)
+Members must support and stand by one another in times of joy, grief, and adversity.
 
-4. To provide humanitarian support to the community and create positive community relationships.
+Rule 7: Financial Transparency (Seera 7: Iftoomina Maallaqaa)
+Administration of revenue, expenditures, contributions, penalties, and association assets must be managed with transparency and verifiable documentation.
 
-5. To stand by each other in times of sorrow (grief) and joy (celebration).
+Rule 8: Meeting Participation (Seera 8: Hirmaannaa Walga'ii)
+Members must make every effort to attend and participate in association meetings.
 
-6. To respect and uphold the culture and traditions we inherited from our ancestors.
+Rule 9: Association Decisions (Seera 9: Murtii Gamtaa)
+Decisions of the association must be made legally, based on deliberation and consensus of the members.
 
-7. To promote good culture, tradition, and communal living.
+Rule 10: Amendment of Regulations (Seera 10: Fooyya'iinsa Dambii)
+The association bylaws may be amended whenever necessary based on the association's established decision-making procedures.
 
-8. To create a generation that embraces mutual support, love, and human compassion.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Motto: Tokkummaan Ciminaa fi Milkaayina (Unity is Strength and Success)`,
+      contentOm: `WIXINEE DAMBII JALQABAA GAMTAA
+Hubachiisa: Seeraa fi dambiin kun wixinee jalqabaa marii fi murtee yaa'ii waliigalaa gamtaatiif dhiyaatedha. Akkaataa adeemsa murtii gamtaatiin bulchitoota aangoo qabaniin kan fooyya'uu fi yeroo yaa'ii waliigalaatiin ragga'u kan hojiirra ooludha.
 
-9. To respect each other's culture and beliefs — currently focusing primarily on objectives 1 and 9.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+HEERA MOOTUMMAA RDFI (BU'UURA SEERAA)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Heera Mootummaa Dimokiraatawa Federaalawaa Itoophiyaa (FDRE), Keewwata 31:
+"Namni kamiyyuu haala seera biyyattii, aadaa fi duudhaa hawaasaa hin faallessineen kaayyoo ykn sababa fedheef gurmaa'uu ykn gamtaadhaan ijaaramuu mirga qaba."
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Gamtaan dargaggoota Melka Jabdu Qaxaa Araati bu'uura heera kanaatiin gamtaa seera qabeessa ta'e seera biyyattii bu'uura godhachuun, akkasumas aadaa fi duudhaa ummataa haala hin faallessineen Fuulbana 1/1/2017 akka lakk. Itoophiyaatti hundaa'eera.
 
-#Unity is Strength and Success`,
-      contentOm: `Bu'uura akka Heera mootummaa dimokraatawaa rippaabilika Itoophiyaa keewwata (FDRE) 31 jalatti eerameen "namni kamiyyuu haala seera biyyattii, aadaa fi duudhaa hawaasaa hin faallessinen kaayyoo ykn sababa fedheef gurmaa'uu ykn gamtaadhaan ijaaramuu mirga qaba".
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+SEERAA FI DAMBII GAMTAA (SEERA 1 - 10)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Kanaafuu Gamtaan dargaggoota melka jabdu qaxaa araati bu'uura heera kanaatin gamtaa seera qabeessa ta'e seera biyyatti bu'uura godhachuun, akkasumaas aadaa fi duudhaa ummataa haala hin faalleessineen fuulbana 1/1/2017 akka lakk. Itoophiyaatti hundaa'eera.
+Seera 1: Kaayyoo Gamtaa
+Gamtaan keenya kan hundeeffame tokkummaa, wal-gargaarsa, jaalala, kabajaafi hariiroo gaarii dargaggoota gidduutti cimsuuf.
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Seera 2: Kabaja Walii
+Miseensi hundi aadaa, amantii, yaadaafi ilaalcha miseensota biroo kabajuu qaba.
 
-KAAYYOO, QAJEELTOO BU'UURAA, HAALA HIRMANNAA, MIRGA FI DIRQAMOOTA MISEENSOOTA GAMTICHAA
+Seera 3: Kaffaltii Torbanii
+Miseensi hundi kaffaltii torbanii dhaabbanni murteesse yeroo isaa eeggatee kaffaluu qaba. Guyyaan kaffaltii Sanbata.
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Seera 4: Adabbii Kaffaltii
+Miseensi kaffaltii torbanii yeroo isaa keessatti hin kaffalle adabbii akkaataa dambii gamtaa keessatti murtaa'een kaffaluu qaba.
 
-Kaayyoo Ijoo Gamtichaa
+Seera 5: Gumaacha Addaa
+Yeroo miseensa tokkoof taatee addaa, kan akka du'a ykn eebba barnootaa maatii isaa, uumamu miseensonni biroo akka murtii gamtaa gumaacha taasisu.
 
-Gamtaan dargaggoo melka jabdu Kaayyoo armaan gadii ni qabaatu:
+Seera 6: Wal-gargaarsa
+Miseensonni yeroo gammachuu, gaddaafi rakkoo wal deeggaruu qabu.
 
-1. Dargaggoon akka waliin jiraatan walbarsiisuu, ijaaruu fi akka walgargaaran taasisuu.
+Seera 7: Iftoomina Maallaqaa
+Bulchiinsi galii, baasii, kaffaltii, adabbii fi qabeenya gamtaa iftoominaafi ragaa qabatamaa irratti hundaa'uun bulchuu qaba.
 
-2. Walitti dhufeenya dargaggoo Tokkummaa fi Hawaasummaa jajjabeessuu.
+Seera 8: Hirmaannaa Walga'ii
+Miseensonni walga'ii gamtaa irratti hirmaachuuf carraaqqii gochuu qabu.
 
-3. Waan xiqqoo qaban walitti fiduudhaan, dargaggoo balaan uumamaa fi nam-tolcheen irra dhaqqabe gargaaruu.
+Seera 9: Murtii Gamtaa
+Murtiin gamtaa haala seera qabeessa, marii fi waliigaltee miseensotaa irratti hundaa'uun kennamuu qaba.
 
-4. Hawaasaf deeggarsa namuumma kennuun hawaasni keenya akka walitti dhufeenya gaarii uumaan godhuu/taasisu.
+Seera 10: Fooyya'iinsa Dambii
+Dambiin gamtaa yeroo barbaachisaa ta'etti akkaataa adeemsa murtii gamtaa irratti hundaa'uun fooyya'uu danda'a.
 
-5. Yeroo rakkoos (gaddaa) ta'ee balloos (gammachuu) wal-cinaa dhaabbachuu.
-
-6. Safuu fi duudhaa Kutaa irraa dhufnee akka hin cabsine eeguu fi wal kabachiisuu.
-
-7. Aadaa, duudhaa fi hawaasummaan gaariin jidduu akka jiraatu godhu.
-
-8. Dhaloota wal gargaarsa aadeeffate, jaalalaa fi quuqama namummaa qabu oomishu.
-
-9. Aadaa fi amantaa ofii waliif kajuu — keessumattuu Qabxii 1ffaa fi 9 caalmaatti irratti xiyyeeffannee kan hoojjannu amma.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-#Tokkummaan Ciminaa fi Milkaayina`,
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Mata Duree: Tokkummaan Ciminaa fi Milkaayina`,
       sortOrder: 3,
     },
     {
@@ -208,96 +295,6 @@ Gamtaan dargaggoo melka jabdu Kaayyoo armaan gadii ni qabaatu:
   });
   console.log('Auditor user created:', auditor.username);
 
-  // 3. Member User - Abebe Kebede (as featured in mockups)
-  const memberPasswordHash = await hashPassword('Abebe@123');
-  const memberUser = await prisma.user.upsert({
-    where: { username: 'abebe' },
-    update: {},
-    create: {
-      username: 'abebe',
-      email: 'abebe@email.com',
-      phone: '+251911123456',
-      passwordHash: memberPasswordHash,
-      role: 'MEMBER',
-      isActive: true,
-      isVerified: true,
-      preferredLanguage: 'om',
-      mustChangePassword: false,
-    },
-  });
-
-  const abebeMember = await prisma.member.upsert({
-    where: { memberId: 'MEM-001' },
-    update: {},
-    create: {
-      memberId: 'MEM-001',
-      userId: memberUser.id,
-      fullName: 'Abebe Kebede',
-      gender: 'MALE',
-      dateOfBirth: new Date('1998-05-12'),
-      address: 'Addis Ababa, Ethiopia',
-      occupation: 'Software Engineer',
-      registrationDate: new Date('2024-09-11'),
-      joinDate: new Date('2024-09-11'),
-      status: 'APPROVED',
-      totalCredit: 150,
-      outstandingBalance: 100,
-    },
-  });
-
-  // Emergency contact for Abebe
-  await prisma.emergencyContact.upsert({
-    where: { memberId: abebeMember.id },
-    update: {},
-    create: {
-      memberId: abebeMember.id,
-      fullName: 'Almaz Tadesse',
-      relationship: 'Mother',
-      phone: '+251922334455',
-      address: 'Addis Ababa',
-    },
-  });
-
-  // Additional members to match dashboard statistics (Gemechu K, Tsion D, etc.)
-  const additionalMembers = [
-    { username: 'gemechu', fullName: 'Gemechu Keneni', phone: '+251911223344', memberId: 'MEM-002', gender: 'MALE' },
-    { username: 'tsion', fullName: 'Tsion Daniel', phone: '+251911334455', memberId: 'MEM-003', gender: 'FEMALE' },
-    { username: 'chala', fullName: 'Chala Beyene', phone: '+251911445566', memberId: 'MEM-004', gender: 'MALE' },
-    { username: 'tolasa', fullName: 'Tolasa Feyisa', phone: '+251911556677', memberId: 'MEM-005', gender: 'MALE' },
-  ];
-
-  for (const m of additionalMembers) {
-    const user = await prisma.user.upsert({
-      where: { username: m.username },
-      update: {},
-      create: {
-        username: m.username,
-        email: `${m.username}@afosha.org`,
-        phone: m.phone,
-        passwordHash: memberPasswordHash,
-        role: 'MEMBER',
-        isActive: true,
-        isVerified: true,
-      },
-    });
-
-    await prisma.member.upsert({
-      where: { memberId: m.memberId },
-      update: {},
-      create: {
-        memberId: m.memberId,
-        userId: user.id,
-        fullName: m.fullName,
-        gender: m.gender as any,
-        dateOfBirth: new Date('1999-01-01'),
-        address: 'Addis Ababa, Ethiopia',
-        status: 'APPROVED',
-        totalCredit: 50,
-        outstandingBalance: 0,
-      },
-    });
-  }
-
   // 4. Initial Contribution Rate History
   const existingRate = await prisma.contributionRateHistory.findFirst();
   if (!existingRate) {
@@ -311,106 +308,7 @@ Gamtaan dargaggoo melka jabdu Kaayyoo armaan gadii ni qabaatu:
     });
   }
 
-  // 5. Sample Obligations & Penalties for Abebe Kebede
-  const now = new Date();
-  const currentWeek = 44;
-  const currentYear = 2026;
-
-  await prisma.weeklyObligation.upsert({
-    where: {
-      memberId_weekNumber_year: {
-        memberId: abebeMember.id,
-        weekNumber: currentWeek,
-        year: currentYear,
-      },
-    },
-    update: {},
-    create: {
-      memberId: abebeMember.id,
-      weekNumber: currentWeek,
-      year: currentYear,
-      dueDate: now,
-      contributionAmount: 50,
-      penaltyAmount: 50,
-      totalDue: 100,
-      amountPaid: 0,
-      status: 'OVERDUE',
-      consecutiveMissedWeeks: 1,
-    },
-  });
-
-  await prisma.penalty.upsert({
-    where: {
-      penalty_per_week: {
-        memberId: abebeMember.id,
-        weekNumber: currentWeek,
-        year: currentYear,
-      },
-    },
-    update: {},
-    create: {
-      memberId: abebeMember.id,
-      weekNumber: currentWeek,
-      year: currentYear,
-      amount: 50,
-      reason: 'Late payment for Saturday contribution',
-      status: 'OUTSTANDING',
-    },
-  });
-
-  // 6. Sample Expense
-  const existingExp = await prisma.expense.findFirst();
-  if (!existingExp) {
-    await prisma.expense.create({
-      data: {
-        expenseId: 'EXP-2026-001',
-        title: 'Hall Rent for General Assembly Meeting',
-        titleOm: 'Kiree Galmaa Walga\'ii Gamtaa',
-        category: 'EVENT',
-        amount: 3500,
-        paymentMethod: 'CASH',
-        recordedById: admin.id,
-        approvalStatus: 'APPROVED',
-      },
-    });
-  }
-
-  // 7. Sample Verified Payment and Receipt for Abebe
-  const existingPay = await prisma.payment.findFirst({ where: { memberId: abebeMember.id } });
-  if (!existingPay) {
-    const payment = await prisma.payment.create({
-      data: {
-        paymentId: 'PAY-2026-001',
-        memberId: abebeMember.id,
-        amount: 150,
-        paymentMethod: 'MOBILE_MONEY',
-        transactionReference: 'AF-2025-1101',
-        status: 'VERIFIED',
-        recordedById: admin.id,
-        verifiedById: admin.id,
-        verifiedAt: new Date(),
-        receiptNumber: 'AF-2025-1101',
-      },
-    });
-
-    await prisma.receipt.create({
-      data: {
-        receiptNumber: 'AF-2025-1101',
-        paymentId: payment.id,
-        memberId: abebeMember.id,
-        amount: 150,
-        paymentMethod: 'CBE Birr',
-        reference: 'AF-2025-1101',
-        breakdown: {
-          weeklyContribution: 50,
-          penalty: 50,
-          outstanding: 50,
-        },
-      },
-    });
-  }
-
-  console.log('Default settings, users, members, and public content seeded successfully');
+  console.log('Production baseline (Admin, Auditor, System Settings, Public Content, Rate History) seeded successfully.');
 }
 
 main()

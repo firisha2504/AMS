@@ -39,7 +39,7 @@ async function calculatePenaltyForMember(
       status: { in: ['PENDING', 'OVERDUE', 'PARTIAL'] },
     },
     orderBy: { dueDate: 'desc' },
-    take: 4,
+    take: 8,
   });
 
   const consecutiveMissed = previousObligations.length;
@@ -47,17 +47,13 @@ async function calculatePenaltyForMember(
   let isMonthlyPenalty = false;
   let totalDue = contributionAmount;
 
-  if (consecutiveMissed >= 3) {
-    const unpaidContributions = previousObligations.reduce(
-      (sum, o) => sum + Number(o.contributionAmount) - Number(o.amountPaid),
-      contributionAmount
-    );
+  if (consecutiveMissed >= 4 && consecutiveMissed % 4 === 0) {
     penaltyAmount = monthlyPenalty;
     isMonthlyPenalty = true;
-    totalDue = unpaidContributions + monthlyPenalty;
+    totalDue = contributionAmount;
   } else if (consecutiveMissed >= 1) {
     penaltyAmount = weeklyPenalty;
-    totalDue = contributionAmount + weeklyPenalty;
+    totalDue = contributionAmount;
   }
 
   return { penaltyAmount, isMonthlyPenalty, totalDue, consecutiveMissed };
@@ -75,15 +71,7 @@ async function createMemberWeeklyObligation(
   });
   if (existing) return false;
 
-  const { contributionAmount, weeklyPenalty, monthlyPenalty } = await getContributionSettings();
-  const penalty = applyPenalties
-    ? await calculatePenaltyForMember(memberId, contributionAmount, weeklyPenalty, monthlyPenalty)
-    : {
-        penaltyAmount: 0,
-        isMonthlyPenalty: false,
-        totalDue: contributionAmount,
-        consecutiveMissed: 0,
-      };
+  const { contributionAmount } = await getContributionSettings();
 
   await prisma.weeklyObligation.create({
     data: {
@@ -92,46 +80,16 @@ async function createMemberWeeklyObligation(
       year,
       dueDate,
       contributionAmount,
-      penaltyAmount: penalty.penaltyAmount,
-      totalDue: penalty.totalDue,
+      penaltyAmount: 0,
+      totalDue: contributionAmount,
+      amountPaid: 0,
       status: ObligationStatus.PENDING,
-      isMonthlyPenalty: penalty.isMonthlyPenalty,
-      consecutiveMissedWeeks: penalty.consecutiveMissed,
+      isMonthlyPenalty: false,
+      consecutiveMissedWeeks: 0,
     },
   });
 
-  if (applyPenalties && penalty.consecutiveMissed >= 1 && penalty.penaltyAmount > 0) {
-    // PHASE 3 FIX #4: Use upsert to prevent duplicate penalties (race condition safe)
-    try {
-      await prisma.penalty.upsert({
-        where: {
-          penalty_per_week: { memberId, weekNumber, year }
-        },
-        create: {
-          memberId,
-          amount: penalty.penaltyAmount,
-          reason: penalty.isMonthlyPenalty
-            ? 'Monthly penalty for 4 consecutive missed weeks'
-            : 'Penalty for missed weekly contribution',
-          weekNumber,
-          year,
-          isMonthly: penalty.isMonthlyPenalty,
-        },
-        update: {}, // If exists, don't update (already recorded)
-      });
-    } catch (error) {
-      console.warn(`[Penalty Upsert] Conflict for member ${memberId} week ${weekNumber}/${year}`, error);
-      // Continue - penalty already exists, that's ok
-    }
-
-    await prisma.member.update({
-      where: { id: memberId },
-      data: {
-        outstandingBalance: { increment: penalty.totalDue },
-      },
-    });
-  }
-
+  await recalculateOutstandingBalance(memberId);
   return true;
 }
 
@@ -316,14 +274,97 @@ export async function applyMissingPenaltiesToExistingObligations(): Promise<numb
 
 export async function markOverdueObligations(): Promise<number> {
   const now = new Date();
-  const result = await prisma.weeklyObligation.updateMany({
+  const { weeklyPenalty, monthlyPenalty } = await getContributionSettings();
+
+  const overduePending = await prisma.weeklyObligation.findMany({
     where: {
       dueDate: { lt: now },
       status: ObligationStatus.PENDING,
     },
-    data: { status: ObligationStatus.OVERDUE },
   });
-  return result.count;
+
+  for (const obligation of overduePending) {
+    await prisma.weeklyObligation.update({
+      where: { id: obligation.id },
+      data: { status: ObligationStatus.OVERDUE },
+    });
+
+    // Create weekly penalty for the missed week (if not already recorded)
+    try {
+      await prisma.penalty.upsert({
+        where: {
+          penalty_per_week: {
+            memberId: obligation.memberId,
+            weekNumber: obligation.weekNumber,
+            year: obligation.year,
+          },
+        },
+        create: {
+          memberId: obligation.memberId,
+          amount: weeklyPenalty,
+          amountPaid: 0,
+          title: `Weekly Penalty W${obligation.weekNumber}`,
+          reason: `Penalty for missed weekly contribution (Week ${obligation.weekNumber}, ${obligation.year})`,
+          weekNumber: obligation.weekNumber,
+          year: obligation.year,
+          isMonthly: false,
+          status: 'OUTSTANDING',
+        },
+        update: {},
+      });
+    } catch {
+      // Penalty already exists
+    }
+  }
+
+  // Assess monthly penalties for completed 4-week blocks
+  const activeMembers = await prisma.member.findMany({
+    where: { status: 'APPROVED' },
+    select: { id: true },
+  });
+
+  for (const member of activeMembers) {
+    const missedObligations = await prisma.weeklyObligation.findMany({
+      where: {
+        memberId: member.id,
+        status: { in: ['PENDING', 'OVERDUE', 'PARTIAL'] },
+        dueDate: { lt: now },
+      },
+      orderBy: { dueDate: 'desc' },
+    });
+
+    const consecutiveMissed = missedObligations.length;
+    const completedBlocks = Math.floor(consecutiveMissed / 4);
+
+    for (let block = 1; block <= completedBlocks; block++) {
+      const blockReason = `Monthly penalty for 4 consecutive missed weeks (Block ${block})`;
+      const existingMonthly = await prisma.penalty.findFirst({
+        where: {
+          memberId: member.id,
+          isMonthly: true,
+          reason: blockReason,
+        },
+      });
+
+      if (!existingMonthly) {
+        await prisma.penalty.create({
+          data: {
+            memberId: member.id,
+            amount: monthlyPenalty,
+            amountPaid: 0,
+            title: `Monthly Missed Penalty (Block ${block})`,
+            reason: blockReason,
+            isMonthly: true,
+            status: 'OUTSTANDING',
+          },
+        });
+      }
+    }
+
+    await recalculateOutstandingBalance(member.id);
+  }
+
+  return overduePending.length;
 }
 
 export async function sendUnpaidReminders(): Promise<number> {
@@ -379,15 +420,15 @@ export async function applyPaymentToObligation(
 
   if (!obligation) return { applied: 0, overpayment: 0 };
 
-  const newPaid = Number(obligation.amountPaid) + amount;
-  const totalDue = Number(obligation.totalDue);
-  const balanceDecrement = Math.min(amount, totalDue - Number(obligation.amountPaid));
-  
-  // PHASE 2 FIX #3: Track overpayment
-  const overpayment = amount - balanceDecrement;
+  const currentPaid = Number(obligation.amountPaid);
+  const contributionRate = Number(obligation.contributionAmount);
+  const remaining = Math.max(0, contributionRate - currentPaid);
+  const balanceDecrement = Math.min(amount, remaining);
+  const overpayment = Math.max(0, amount - balanceDecrement);
+  const newPaid = currentPaid + balanceDecrement;
 
   let status: ObligationStatus = ObligationStatus.PARTIAL;
-  if (newPaid >= totalDue) status = ObligationStatus.PAID;
+  if (newPaid >= contributionRate) status = ObligationStatus.PAID;
   else if (newPaid === 0) status = ObligationStatus.PENDING;
 
   await prisma.$transaction(async (tx) => {
@@ -395,64 +436,9 @@ export async function applyPaymentToObligation(
       where: { id: obligationId },
       data: { amountPaid: newPaid, status },
     });
-
-    // Clamp to 0 so the balance never goes negative
-    const current = await tx.member.findUnique({
-      where: { id: obligation.memberId },
-      select: { outstandingBalance: true },
-    });
-    const safeBalance = Math.max(0, Number(current?.outstandingBalance ?? 0) - balanceDecrement);
-    await tx.member.update({
-      where: { id: obligation.memberId },
-      data: { outstandingBalance: safeBalance },
-    });
-
-    // PHASE 2 FIX #3: If overpayment exists, find next obligation and apply
-    if (overpayment > 0) {
-      const nextObligation = await tx.weeklyObligation.findFirst({
-        where: {
-          memberId: obligation.memberId,
-          dueDate: { gt: obligation.dueDate },
-          status: { in: ['PENDING', 'OVERDUE'] }
-        },
-        orderBy: { dueDate: 'asc' }
-      });
-
-      if (nextObligation) {
-        // Recursively apply overpayment to next obligation
-        const nextNewPaid = Number(nextObligation.amountPaid) + overpayment;
-        const nextTotalDue = Number(nextObligation.totalDue);
-        const nextBalanceDecrement = Math.min(overpayment, nextTotalDue - Number(nextObligation.amountPaid));
-        
-        let nextStatus: ObligationStatus = ObligationStatus.PARTIAL;
-        if (nextNewPaid >= nextTotalDue) nextStatus = ObligationStatus.PAID;
-
-        await tx.weeklyObligation.update({
-          where: { id: nextObligation.id },
-          data: { amountPaid: nextNewPaid, status: nextStatus }
-        });
-
-        const nextCurrent = await tx.member.findUnique({
-          where: { id: obligation.memberId },
-          select: { outstandingBalance: true }
-        });
-        const nextSafeBalance = Math.max(0, Number(nextCurrent?.outstandingBalance ?? 0) - nextBalanceDecrement);
-        await tx.member.update({
-          where: { id: obligation.memberId },
-          data: { outstandingBalance: nextSafeBalance }
-        });
-
-        console.log(`[Overpayment] Linked ${overpayment} ETB from obligation ${obligationId} to next obligation ${nextObligation.id}`);
-      } else {
-        // No next obligation, create credit balance for future use
-        // (in a real system, could track credits separately)
-        console.log(`[Overpayment] No next obligation found for member. Excess ${overpayment} ETB remains recorded on original obligation.`);
-      }
-    }
-
-    // Note: Penalties are NOT auto-settled when obligation is paid
-    // Penalties must be paid separately through the Penalties page
   });
+
+  await recalculateOutstandingBalance(obligation.memberId);
 
   return { applied: balanceDecrement, overpayment };
 }
@@ -473,14 +459,11 @@ export async function reversePaymentFromObligation(
 
   const currentPaid = Number(obligation.amountPaid);
   const newPaid = Math.max(0, currentPaid - amount);
-  const totalDue = Number(obligation.totalDue);
-
-  // How much outstanding balance to restore
-  const balanceIncrement = Math.min(amount, currentPaid);
+  const contributionRate = Number(obligation.contributionAmount);
 
   let status: ObligationStatus;
   if (newPaid <= 0) status = ObligationStatus.PENDING;
-  else if (newPaid >= totalDue) status = ObligationStatus.PAID;
+  else if (newPaid >= contributionRate) status = ObligationStatus.PAID;
   else status = ObligationStatus.PARTIAL;
 
   await prisma.$transaction(async (tx) => {
@@ -488,16 +471,9 @@ export async function reversePaymentFromObligation(
       where: { id: obligationId },
       data: { amountPaid: newPaid, status },
     });
-
-    // Restore the outstanding balance
-    await tx.member.update({
-      where: { id: obligation.memberId },
-      data: { outstandingBalance: { increment: balanceIncrement } },
-    });
-
-    // Note: Penalties are NOT auto-reverted when obligation is rolled back
-    // Penalties must be managed separately through the Penalties page
   });
+
+  await recalculateOutstandingBalance(obligation.memberId);
 }
 
 
@@ -510,39 +486,9 @@ export async function reversePaymentFromObligation(
  * This ensures accuracy even if incremental updates became inconsistent
  */
 export async function recalculateOutstandingBalance(memberId: string): Promise<number> {
-  const [weeklyData, specialData, penaltyData] = await Promise.all([
-    prisma.weeklyObligation.aggregate({
-      where: { memberId, status: { in: ['PENDING', 'OVERDUE', 'PARTIAL'] } },
-      _sum: {
-        totalDue: true,
-        amountPaid: true,
-      },
-    }),
-    prisma.specialContributionObligation.aggregate({
-      where: { memberId, status: { in: ['PENDING', 'OVERDUE', 'PARTIAL'] } },
-      _sum: {
-        amount: true,
-        amountPaid: true,
-      },
-    }),
-    prisma.penalty.aggregate({
-      where: { memberId, status: 'OUTSTANDING' },
-      _sum: { amount: true },
-    }),
-  ]);
-
-  const weeklyUnpaid = Number(weeklyData._sum.totalDue || 0) - Number(weeklyData._sum.amountPaid || 0);
-  const specialUnpaid = Number(specialData._sum.amount || 0) - Number(specialData._sum.amountPaid || 0);
-  const totalPenalties = Number(penaltyData._sum.amount || 0);
-
-  const totalBalance = weeklyUnpaid + specialUnpaid + totalPenalties;
-
-  await prisma.member.update({
-    where: { id: memberId },
-    data: { outstandingBalance: totalBalance },
-  });
-
-  return totalBalance;
+  const { getMemberFinancialSummary } = await import('./financial-calculator.service.js');
+  const summary = await getMemberFinancialSummary(memberId);
+  return summary ? summary.totalOutstandingBalance : 0;
 }
 
 /**
@@ -618,11 +564,18 @@ export async function applyPaymentToObligationIdempotent(
  * Prevents orphan payments
  */
 export async function validatePaymentObligation(
-  obligationId: string | null | undefined,
-  specialContributionObligationId: string | null | undefined
+  obligationId?: string | null,
+  specialContributionObligationId?: string | null,
+  penaltyId?: string | null,
+  joiningObligationId?: string | null
 ): Promise<{ valid: boolean; error?: string }> {
-  if (!obligationId && !specialContributionObligationId) {
-    return { valid: false, error: 'Payment must be linked to either a weekly or special contribution obligation' };
+  if (penaltyId) {
+    const penalty = await prisma.penalty.findUnique({
+      where: { id: penaltyId },
+    });
+    if (!penalty) {
+      return { valid: false, error: 'Penalty obligation not found' };
+    }
   }
 
   if (obligationId) {
@@ -640,6 +593,15 @@ export async function validatePaymentObligation(
     });
     if (!obligation) {
       return { valid: false, error: 'Special contribution obligation not found' };
+    }
+  }
+
+  if (joiningObligationId) {
+    const obligation = await prisma.joiningObligation.findUnique({
+      where: { id: joiningObligationId },
+    });
+    if (!obligation) {
+      return { valid: false, error: 'Joining obligation not found' };
     }
   }
 

@@ -100,9 +100,9 @@ type UnpaidData = {
 
 function ContributionsTableFull({ data }: { data: Payment[] }) {
   if (!data.length) return (
-    <div className="flex flex-col items-center justify-center py-16 text-gray-400">
-      <AlertCircle size={40} className="mb-3 opacity-40" />
-      <p className="text-sm">No records found for the selected period.</p>
+    <div className="flex flex-col items-center justify-center py-16 text-gray-600">
+      <AlertCircle size={40} className="mb-3 opacity-60 text-gray-500" />
+      <p className="text-sm font-medium">No records found for the selected period.</p>
     </div>
   );
   // Calculate total - ensure all amounts are properly converted to numbers
@@ -118,7 +118,7 @@ function ContributionsTableFull({ data }: { data: Payment[] }) {
           <thead>
             <tr className="bg-gray-50 border-b border-gray-200">
               {['Receipt #', 'Member ID', 'Member Name', 'Amount (ETB)', 'Date', 'Method', 'Status'].map((h) => (
-                <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider whitespace-nowrap">{h}</th>
+                <th key={h} className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider whitespace-nowrap">{h}</th>
               ))}
             </tr>
           </thead>
@@ -152,9 +152,9 @@ function ContributionsTableFull({ data }: { data: Payment[] }) {
 
 function PenaltiesTable({ data }: { data: Penalty[] }) {
   if (!data.length) return (
-    <div className="flex flex-col items-center justify-center py-16 text-gray-400">
-      <AlertCircle size={40} className="mb-3 opacity-40" />
-      <p className="text-sm">No records found for the selected period.</p>
+    <div className="flex flex-col items-center justify-center py-16 text-gray-600">
+      <AlertCircle size={40} className="mb-3 opacity-60 text-gray-500" />
+      <p className="text-sm font-medium">No records found for the selected period.</p>
     </div>
   );
   const total = data.reduce((s, p) => s + Number(p.amount), 0);
@@ -164,7 +164,7 @@ function PenaltiesTable({ data }: { data: Penalty[] }) {
         <thead>
           <tr className="bg-gray-50 border-b border-gray-200">
             {['Member ID', 'Member Name', 'Reason', 'Amount (ETB)', 'Status', 'Date'].map((h) => (
-              <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{h}</th>
+              <th key={h} className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">{h}</th>
             ))}
           </tr>
         </thead>
@@ -194,9 +194,9 @@ function PenaltiesTable({ data }: { data: Penalty[] }) {
 
 function AttendanceTable({ data }: { data: Attendance[] }) {
   if (!data.length) return (
-    <div className="flex flex-col items-center justify-center py-16 text-gray-400">
-      <AlertCircle size={40} className="mb-3 opacity-40" />
-      <p className="text-sm">No records found for the selected period.</p>
+    <div className="flex flex-col items-center justify-center py-16 text-gray-600">
+      <AlertCircle size={40} className="mb-3 opacity-60 text-gray-500" />
+      <p className="text-sm font-medium">No records found for the selected period.</p>
     </div>
   );
   return (
@@ -205,7 +205,7 @@ function AttendanceTable({ data }: { data: Attendance[] }) {
         <thead>
           <tr className="bg-gray-50 border-b border-gray-200">
             {['Member ID', 'Member Name', 'Meeting', 'Meeting Date', 'Status'].map((h) => (
-              <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{h}</th>
+              <th key={h} className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">{h}</th>
             ))}
           </tr>
         </thead>
@@ -227,9 +227,9 @@ function AttendanceTable({ data }: { data: Attendance[] }) {
 
 function SpecialContributionsTable({ data }: { data: SpecialContribution[] }) {
   if (!data.length) return (
-    <div className="flex flex-col items-center justify-center py-16 text-gray-400">
-      <AlertCircle size={40} className="mb-3 opacity-40" />
-      <p className="text-sm">No records found for the selected period.</p>
+    <div className="flex flex-col items-center justify-center py-16 text-gray-600">
+      <AlertCircle size={40} className="mb-3 opacity-60 text-gray-500" />
+      <p className="text-sm font-medium">No records found for the selected period.</p>
     </div>
   );
   const total = data.reduce((s, i) => s + Number(i.amount), 0);
@@ -239,7 +239,7 @@ function SpecialContributionsTable({ data }: { data: SpecialContribution[] }) {
         <thead>
           <tr className="bg-gray-50 border-b border-gray-200">
             {['Type', 'Beneficiary', 'Amount (ETB)', 'Obligations', 'Date'].map((h) => (
-              <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase tracking-wider">{h}</th>
+              <th key={h} className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider">{h}</th>
             ))}
           </tr>
         </thead>
@@ -324,9 +324,9 @@ function UnpaidContributionsReport({ data }: { data: UnpaidData }) {
 
   if (!weeklyObligations.length && !specialObligations.length && !penalties.length) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-gray-400">
-        <AlertCircle size={40} className="mb-3 opacity-40" />
-        <p className="text-sm">No unpaid contributions found. All members are up to date!</p>
+      <div className="flex flex-col items-center justify-center py-16 text-gray-600">
+        <AlertCircle size={40} className="mb-3 opacity-60 text-gray-500" />
+        <p className="text-sm font-medium">No unpaid contributions found. All members are up to date!</p>
       </div>
     );
   }

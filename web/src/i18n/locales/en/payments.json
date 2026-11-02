@@ -1,0 +1,58 @@
+{
+  "payments": {
+    "title": "Payments",
+    "makePayment": "Make a Payment",
+    "recordPayment": "Record Payment",
+    "paymentMethod": "Payment Method",
+    "transactionRef": "Transaction Reference",
+    "amount": "Amount (ETB)",
+    "date": "Date",
+    "status": "Status",
+    "member": "Member",
+    "selectMember": "Select Member",
+    "receipt": "Receipt",
+    "receiptNumber": "Receipt Number",
+    "notes": "Notes",
+    "addNotes": "Add Notes",
+    "paymentHistory": "Payment History",
+    "recentPayments": "Recent Payments",
+    "noPayments": "No payments found",
+    "paymentRecorded": "Payment recorded successfully!",
+    "paymentVerified": "Payment verified successfully!",
+    "paymentRejected": "Payment rejected!",
+    "bulkRecord": "Bulk Record",
+    "categories": {
+      "weekly": "Weekly Contribution",
+      "weeklyPenalty": "Weekly Penalty",
+      "monthlyPenalty": "Monthly Penalty",
+      "otherPenalty": "Other Penalty",
+      "special": "Special Contribution",
+      "emergency": "Emergency Contribution",
+      "historical": "Historical Contribution"
+    },
+    "allocations": {
+      "title": "Payment Category Allocations",
+      "subtitle": "Independent allocation breakdown per payment transaction",
+      "splitNotice": "Payment split across multiple categories",
+      "singleNotice": "Single category payment",
+      "originalOwed": "Original Owed",
+      "amountAllocated": "Amount Allocated",
+      "remaining": "Remaining",
+      "allocationId": "Allocation ID",
+      "breakdown": "Allocation Breakdown"
+    },
+    "methods": {
+      "cbe": "CBE Birr",
+      "telebirr": "Telebirr",
+      "ebirr": "E-Birr",
+      "bankTransfer": "Bank Transfer",
+      "cash": "Cash (Office)"
+    },
+    "verifyConfirm": "Confirm Payment Verification",
+    "verifySuccess": "Payment Verified",
+    "rollback": "Rollback Payment",
+    "rollbackConfirm": "Confirm payment rollback?",
+    "rollbackSuccess": "Payment rolled back",
+    "rollbackReason": "Reason for Rollback"
+  }
+}

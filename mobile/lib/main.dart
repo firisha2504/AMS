@@ -9,6 +9,7 @@ import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/forgot_password_screen.dart';
 import 'utils/fallback_locale_delegate.dart';
+import 'l10n/app_localizations.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -37,6 +38,7 @@ class AmsApp extends StatelessWidget {
                 locale: localeProvider.locale,
                 theme: themeProvider.themeData,
                 localizationsDelegates: const [
+                  AppLocalizations.delegate,
                   FallbackMaterialLocalizationsDelegate(),
                   GlobalWidgetsLocalizations.delegate,
                   FallbackCupertinoLocalizationsDelegate(),

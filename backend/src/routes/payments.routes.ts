@@ -10,27 +10,39 @@ import {
   generateReceiptNumber,
 } from '../services/helpers.js';
 import {
-  applyPaymentToObligation,
+  executeUnifiedPayment,
+  reverseVerifiedPayment,
+} from '../services/payment-allocation.service.js';
+import {
   reversePaymentFromObligation,
+  applyPaymentToObligation,
   recordLedgerEntry,
-  validatePaymentObligation,
-  applyPaymentToObligationIdempotent,
   recalculateOutstandingBalance,
-  validatePaymentFullyApplied,
-  autoReconcileJoiningObligationPayment,
 } from '../services/contribution.service.js';
-import { applySpecialContributionPayment } from '../services/special-contribution.service.js';
+import { getMemberFinancialSummary } from '../services/financial-calculator.service.js';
 import { recordPaymentSchema, paginationSchema } from '../validators/schemas.js';
 import { sendError, sendSuccess } from '../utils/response.js';
 import { sendPushNotification } from '../services/notification.service.js';
 
 const router = Router();
 
-// PHASE 1 FIX #10: Prevent orphan payments
-router.post('/', authenticate, authorize('ADMIN', 'AUDITOR'), validateBody(recordPaymentSchema), async (req: AuthRequest, res: Response) => {
+// Record a payment (ADMIN / AUDITOR)
+router.post('/', authenticate, authorize('ADMIN', 'AUDITOR'), async (req: AuthRequest, res: Response) => {
   const lang = getLanguage(req);
-  const { memberId, amount, paymentMethod, transactionReference, notes } = req.body;
-  let { obligationId, specialContributionObligationId } = req.body;
+  const {
+    memberId,
+    amount,
+    paymentMethod = 'CASH',
+    transactionReference,
+    notes,
+    obligationId,
+    penaltyId,
+    specialContributionObligationId,
+    joiningObligationId,
+    category,
+    explicitAllocations,
+    isVerified = true,
+  } = req.body;
   const recordedById = req.user!.userId;
 
   const { member, error } = await getMemberById(memberId, lang);
@@ -39,94 +51,45 @@ router.post('/', authenticate, authorize('ADMIN', 'AUDITOR'), validateBody(recor
     return;
   }
 
-  // Auto-link to the oldest unpaid/overdue weekly obligation if no obligationId provided
-  if (!obligationId && !specialContributionObligationId) {
-    const unpaidObligation = await prisma.weeklyObligation.findFirst({
-      where: {
-        memberId,
-        status: { in: ['PENDING', 'OVERDUE', 'PARTIAL'] },
-      },
-      orderBy: { dueDate: 'asc' }, // oldest first
-    });
-    if (unpaidObligation) {
-      obligationId = unpaidObligation.id;
-    } else {
-      // PHASE 3 FIX #6: Try to auto-link to oldest unpaid special contribution if no weekly obligations
-      const unpaidSpecial = await prisma.specialContributionObligation.findFirst({
-        where: {
-          memberId,
-          status: { in: ['PENDING', 'OVERDUE', 'PARTIAL'] },
-        },
-        orderBy: { createdAt: 'asc' }, // oldest first
-      });
-      if (unpaidSpecial) {
-        specialContributionObligationId = unpaidSpecial.id;
-      } else {
-        // PHASE 1 FIX #10: No unpaid obligation found - reject instead of creating orphan
-        sendError(res, 'payment.noUnpaidObligation', lang, 400);
-        return;
-      }
-    }
-  }
-
-  // PHASE 1 FIX #10: Validate obligation exists
-  const validation = await validatePaymentObligation(obligationId, specialContributionObligationId);
-  if (!validation.valid) {
-    sendError(res, 'payment.invalidObligation', lang, 400);
-    return;
-  }
-
-  const transactionType = specialContributionObligationId
-    ? TransactionType.SPECIAL_CONTRIBUTION
-    : TransactionType.WEEKLY_CONTRIBUTION;
-
-  const payment = await prisma.payment.create({
-    data: {
-      paymentId: generatePaymentId(),
+  try {
+    const result = await executeUnifiedPayment({
       memberId,
-      obligationId: obligationId || undefined,
-      specialContributionObligationId,
-      amount,
+      amount: Number(amount),
       paymentMethod,
       transactionReference,
       notes,
       recordedById,
-      receiptNumber: generateReceiptNumber(),
-      status: PaymentStatus.PENDING,
-    },
-    include: {
-      member: { select: { fullName: true, memberId: true } },
-      recordedBy: { select: { username: true } },
-    },
-  });
+      obligationId,
+      penaltyId,
+      specialContributionObligationId,
+      joiningObligationId,
+      category,
+      explicitAllocations,
+      isVerified,
+    });
 
-  await recordLedgerEntry(
-    memberId,
-    transactionType,
-    amount,
-    `Payment ${payment.paymentId}`,
-    recordedById
-  );
+    await createAuditEntry(
+      recordedById,
+      isVerified ? 'PAYMENT_RECORDED_AND_VERIFIED' : 'PENDING_PAYMENT_RECORDED',
+      'payments',
+      { paymentId: result.payment.paymentId, memberId, amount },
+      req.ip
+    );
 
-  if (obligationId) {
-    await applyPaymentToObligation(obligationId, amount);
+    sendSuccess(res, result.payment, 'payment.recorded', lang, 201);
+  } catch (err: any) {
+    sendError(res, err.message || 'Payment processing failed', lang, 400);
   }
-
-  if (specialContributionObligationId) {
-    await applySpecialContributionPayment(specialContributionObligationId, amount);
-  }
-
-  await createAuditEntry(recordedById, 'PAYMENT_RECORDED', 'payments', { paymentId: payment.paymentId }, req.ip);
-
-  sendSuccess(res, payment, 'payment.recorded', lang, 201);
 });
 
-// PHASE 1 FIX #11: Prevent double-verify
+// Verify a pending payment
 router.patch('/:id/verify', authenticate, authorize('ADMIN'), async (req: AuthRequest, res: Response) => {
   const lang = getLanguage(req);
+  const id = String(req.params.id);
 
   const existing = await prisma.payment.findUnique({
-    where: { id: String(req.params.id) },
+    where: { id },
+    include: { member: true },
   });
 
   if (!existing) {
@@ -134,73 +97,61 @@ router.patch('/:id/verify', authenticate, authorize('ADMIN'), async (req: AuthRe
     return;
   }
 
-  // PHASE 1 FIX #11: Check if already verified
   if (existing.status === PaymentStatus.VERIFIED) {
     sendError(res, 'payment.alreadyVerified', lang, 409);
     return;
   }
 
-  // PHASE 3 FIX #17: Validate payment has been fully applied before verification
-  const applicableValidation = await validatePaymentFullyApplied(String(req.params.id));
-  if (!applicableValidation.valid) {
-    sendError(res, 'payment.notFullyApplied', lang, 400);
+  try {
+    // Execute unified payment allocation
+    const result = await executeUnifiedPayment({
+      memberId: existing.memberId,
+      amount: Number(existing.amount),
+      paymentMethod: existing.paymentMethod,
+      transactionReference: existing.transactionReference || existing.paymentId,
+      notes: existing.notes || undefined,
+      recordedById: req.user!.userId,
+      obligationId: existing.obligationId || undefined,
+      penaltyId: existing.penaltyId || undefined,
+      specialContributionObligationId: existing.specialContributionObligationId || undefined,
+      joiningObligationId: existing.joiningObligationId || undefined,
+      isVerified: true,
+    });
+
+    // Delete or replace pending payment record with verified payment record
+    await prisma.payment.delete({ where: { id } });
+
+    await createAuditEntry(
+      req.user!.userId,
+      'PAYMENT_VERIFIED',
+      'payments',
+      { paymentId: result.payment.paymentId },
+      req.ip
+    );
+
+    sendSuccess(res, result.payment, 'payment.verified', lang);
+  } catch (err: any) {
+    sendError(res, err.message || 'Failed to verify payment', lang, 400);
+  }
+});
+
+// Refund or Reverse a verified payment
+router.post('/:id/refund', authenticate, authorize('ADMIN'), async (req: AuthRequest, res: Response) => {
+  const lang = getLanguage(req);
+  const id = String(req.params.id);
+  const { reason } = req.body;
+
+  if (!reason || !reason.trim()) {
+    sendError(res, 'Reason is required for refund / reversal', lang, 400);
     return;
   }
 
-  const payment = await prisma.payment.update({
-    where: { id: String(req.params.id) },
-    data: {
-      status: PaymentStatus.VERIFIED,
-      verifiedById: req.user!.userId,
-      verifiedAt: new Date(),
-    },
-    include: {
-      member: { select: { fullName: true, memberId: true, userId: true } },
-      verifiedBy: { select: { username: true } },
-    },
-  });
-
-  // PHASE 3 FIX #14: Auto-reconcile payment toward joining obligation if applicable
   try {
-    const reconcilationResult = await autoReconcileJoiningObligationPayment(
-      payment.memberId,
-      Number(payment.amount),
-      payment.paymentDate
-    );
-    if (reconcilationResult.reconciled) {
-      console.log(`[Joining Obligation Reconciliation] ${reconcilationResult.reason} for payment ${payment.paymentId}`);
-    }
-  } catch (error) {
-    console.warn('[Joining Obligation Reconciliation Error]', error);
-    // Continue - reconciliation is optional
+    const result = await reverseVerifiedPayment(id, req.user!.userId, reason.trim());
+    sendSuccess(res, result, 'payment.refunded', lang);
+  } catch (err: any) {
+    sendError(res, err.message || 'Failed to refund payment', lang, 400);
   }
-
-  // Obligation is already updated when the payment was recorded — do not apply again on verify.
-
-  await prisma.notification.create({
-    data: {
-      userId: payment.member.userId,
-      memberId: payment.memberId,
-      type: 'PAYMENT_CONFIRMATION',
-      title: 'Payment Confirmed',
-      titleOm: 'Kaffaltiin Mirkanaa\'e',
-      message: `Your payment of ${payment.amount} Birr has been verified.`,
-      messageOm: `Kaffaltiin keessan Birr ${payment.amount} mirkanaa\'eera.`,
-      metadata: { paymentId: payment.paymentId, receiptNumber: payment.receiptNumber },
-    },
-  });
-
-  await sendPushNotification(
-    payment.member.userId,
-    lang === 'om' ? 'Kaffaltiin Mirkanaa\'e' : 'Payment Confirmed',
-    lang === 'om'
-      ? `Kaffaltiin keessan Birr ${payment.amount} mirkanaa\'eera.`
-      : `Your payment of ${payment.amount} Birr has been verified.`
-  );
-
-  await createAuditEntry(req.user!.userId, 'PAYMENT_VERIFIED', 'payments', { paymentId: payment.paymentId }, req.ip);
-
-  sendSuccess(res, payment, 'payment.verified', lang);
 });
 
 // Edit a payment — ADMIN only
@@ -413,9 +364,25 @@ router.post('/bulk', authenticate, authorize('ADMIN', 'AUDITOR'), async (req: Au
 router.get('/', authenticate, authorize('ADMIN', 'AUDITOR'), validateQuery(paginationSchema), async (req: AuthRequest, res: Response) => {
   const lang = getLanguage(req);
   const { page, limit, search, status } = req.validatedQuery as { page: number; limit: number; search?: string; status?: string };
+  const category = (req.query.category as string | undefined)?.toUpperCase();
 
   const where: Record<string, unknown> = {};
   if (status) where.status = status;
+  if (category && category !== 'ALL') {
+    if (category === 'PENALTY') {
+      where.OR = [
+        { penaltyId: { not: null } },
+        { allocations: { some: { allocationType: { in: ['PENALTY', 'WEEKLY_PENALTY', 'MONTHLY_PENALTY', 'OTHER_PENALTY'] } } } },
+      ];
+    } else {
+      where.OR = [
+        { allocations: { some: { allocationType: category } } },
+        ...(category === 'WEEKLY' ? [{ obligationId: { not: null } }] : []),
+        ...(category === 'SPECIAL' ? [{ specialContributionObligationId: { not: null } }] : []),
+        ...(category === 'HISTORICAL' ? [{ joiningObligationId: { not: null } }] : []),
+      ];
+    }
+  }
 
   const payments = await prisma.payment.findMany({
     where,
@@ -430,6 +397,14 @@ router.get('/', authenticate, authorize('ADMIN', 'AUDITOR'), validateQuery(pagin
           dueDate: true,
         },
       },
+      penalty: {
+        select: {
+          title: true,
+          reason: true,
+          isMonthly: true,
+          weekNumber: true,
+        },
+      },
       specialContributionObligation: {
         select: {
           specialContribution: {
@@ -439,6 +414,20 @@ router.get('/', authenticate, authorize('ADMIN', 'AUDITOR'), validateQuery(pagin
               type: true,
             },
           },
+        },
+      },
+      joiningObligation: true,
+      receipt: true,
+      allocations: {
+        include: {
+          weeklyObligation: { select: { weekNumber: true, year: true } },
+          penalty: { select: { title: true, reason: true, isMonthly: true } },
+          specialContributionObligation: {
+            select: {
+              specialContribution: { select: { title: true, type: true } },
+            },
+          },
+          joiningObligation: true,
         },
       },
     },
@@ -461,6 +450,7 @@ router.get('/my', authenticate, authorize('MEMBER'), validateQuery(paginationSch
   const lang = getLanguage(req);
   const userId = req.user!.userId;
   const { page, limit } = req.validatedQuery as { page: number; limit: number };
+  const category = (req.query.category as string | undefined)?.toUpperCase();
 
   const member = await prisma.member.findUnique({ where: { userId } });
   if (!member) {
@@ -468,14 +458,50 @@ router.get('/my', authenticate, authorize('MEMBER'), validateQuery(paginationSch
     return;
   }
 
+  const where: Record<string, unknown> = { memberId: member.id };
+  if (category && category !== 'ALL') {
+    if (category === 'PENALTY') {
+      where.OR = [
+        { penaltyId: { not: null } },
+        { allocations: { some: { allocationType: { in: ['PENALTY', 'WEEKLY_PENALTY', 'MONTHLY_PENALTY', 'OTHER_PENALTY'] } } } },
+      ];
+    } else {
+      where.OR = [
+        { allocations: { some: { allocationType: category } } },
+        ...(category === 'WEEKLY' ? [{ obligationId: { not: null } }] : []),
+        ...(category === 'SPECIAL' ? [{ specialContributionObligationId: { not: null } }] : []),
+        ...(category === 'HISTORICAL' ? [{ joiningObligationId: { not: null } }] : []),
+      ];
+    }
+  }
+
   const [payments, total] = await Promise.all([
     prisma.payment.findMany({
-      where: { memberId: member.id },
+      where,
+      include: {
+        receipt: true,
+        obligation: { select: { weekNumber: true, year: true, dueDate: true } },
+        penalty: { select: { title: true, reason: true, isMonthly: true } },
+        specialContributionObligation: {
+          select: { specialContribution: { select: { title: true, type: true } } },
+        },
+        joiningObligation: true,
+        allocations: {
+          include: {
+            weeklyObligation: { select: { weekNumber: true, year: true } },
+            penalty: { select: { title: true, reason: true, isMonthly: true } },
+            specialContributionObligation: {
+              select: { specialContribution: { select: { title: true, type: true } } },
+            },
+            joiningObligation: true,
+          },
+        },
+      },
       orderBy: { paymentDate: 'desc' },
       skip: (page - 1) * limit,
       take: limit,
     }),
-    prisma.payment.count({ where: { memberId: member.id } }),
+    prisma.payment.count({ where }),
   ]);
 
   sendSuccess(res, payments, 'general.success', lang, 200, { page, limit, total });

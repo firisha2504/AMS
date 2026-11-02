@@ -1,0 +1,66 @@
+{
+  "public": {
+    "home": "Mana",
+    "about": "Waa'ee Keenya",
+    "payment": "Kaffaltii",
+    "contact": "Qunnamtii",
+    "portal": "Gara Portaalichaatti Seeni",
+    "welcome": "Baga Nagaan Gara Sirna Bulchiinsa Afoshaatti Dhuftan",
+    "welcomeSubtitle": "Bulchiinsa miseensotaa, kaffaltii torbanii, fi tokkummaa hawaasummaa.",
+    "joinUs": "Nuti Dabalami",
+    "learnMore": "Dabalata Baradhu",
+    "activeMembers": "Miseensota Hojii Irra Jiran",
+    "weeklyDues": "Kaffaltii Torbanii: 50 ETB",
+    "everySaturday": "Sanbata Sanbata",
+    "heroSubtitle": "Gamtaan Dargaggoota Melka Jabdu Qaxaa Araati Walin Jiruu, Ijaaru fi Gargaarsi Taasisuf. Bu'uura Heera FDRE Keewwata 31 jalatti kan hundeeffame.",
+    "cards": {
+      "manageMembers": "Miseensota Bulchi",
+      "manageMembersDesc": "Profaayilii fi mirkaneessa",
+      "trackPayments": "Kaffaltii Hordofi",
+      "trackPaymentsDesc": "Kaffaltii torbanii fi kan addaa",
+      "monitorPenalties": "Adabbii To'adhu",
+      "monitorPenaltiesDesc": "Seera torbaniifi ji'aa",
+      "sendNotifications": "Beeksisa Ergi",
+      "sendNotificationsDesc": "SMS fi akeekkachiisa",
+      "generateReports": "Gabaasa Qopheessi",
+      "generateReportsDesc": "Madaallii fi galmee maallaqaa"
+    },
+    "aboutTabs": {
+      "history": "Seenaa Hundeeffamaa",
+      "mission": "Ergaa fi Kaayyoo",
+      "regulations": "Heera fi Dambii Gamtaa"
+    },
+    "contact": {
+      "title": "Nu Qunnamaa",
+      "subtitle": "Gaaffii, yaada ykn odeeffannoo dabalataaf nu qunnamaa.",
+      "sendMessage": "Ergaa Nuuf Ergaa",
+      "meetingSchedule": "Sagantaa Walga'ii",
+      "meetingTime": "Sanbata Sanbata sa'aatii 4:00 PM",
+      "location": "Melka Jabdu, Qaxaa Araati, Dirree Dawaa",
+      "namePlaceholder": "Maqaa keessan guutuu",
+      "phonePlaceholder": "+251 9...",
+      "messagePlaceholder": "Ergaa keessan asitti barreessaa...",
+      "sendBtn": "Ergaa Ergi",
+      "sendSuccess": "Ergaan keessan milkaa'inaan ergameera!"
+    }
+  },
+  "auth": {
+    "login": "Seeni",
+    "loginTitle": "Baga Nagaan Dhuftan",
+    "loginSubtitle": "Akkaawuntii keessan fayyadamaa seenaa",
+    "username": "Maqaa Fayyadamaa",
+    "phone": "Lakk. Bilbilaa",
+    "password": "Jecha Iccitii",
+    "forgotPassword": "Jecha iccitii dagatte?",
+    "forgotPasswordTitle": "Jecha Iccitii Haaromsuu",
+    "forgotPasswordSubtitle": "Lakk. bilbilaa ykn imeelii keessan galchuun koodii OTP argadhaa",
+    "enterOtp": "Koodii OTP Galchi",
+    "otpSent": "Koodiin OTP bilbila keessanitti ergameera",
+    "newPassword": "Jecha Iccitii Haaraa",
+    "confirmPassword": "Jecha Iccitii Mirkaneessi",
+    "resetSuccess": "Jechi iccitii keessan milkaa'inaan haaromfameera!",
+    "backToLogin": "Gara Seensatti Deebi'i",
+    "loginFailed": "Maqaan fayyadamaa ykn jechi iccitii dogoggora",
+    "signingIn": "Seenaa jira..."
+  }
+}

@@ -1,0 +1,66 @@
+{
+  "public": {
+    "home": "Home",
+    "about": "About Us",
+    "payment": "Payment",
+    "contact": "Contact",
+    "portal": "Access Member Portal",
+    "welcome": "Welcome to Afosha Management System",
+    "welcomeSubtitle": "Member management, weekly contributions, and community solidarity.",
+    "joinUs": "Join Us",
+    "learnMore": "Learn More",
+    "activeMembers": "Active Members",
+    "weeklyDues": "Weekly Dues: 50 ETB",
+    "everySaturday": "Every Saturday",
+    "heroSubtitle": "Melka Jabdu Qaxaa Araati Youth Association for Community Living, Building, and Mutual Support. Established under FDRE Constitution Article 31.",
+    "cards": {
+      "manageMembers": "Manage Members",
+      "manageMembersDesc": "Profiles & approvals",
+      "trackPayments": "Track Payments",
+      "trackPaymentsDesc": "Weekly & special dues",
+      "monitorPenalties": "Monitor Penalties",
+      "monitorPenaltiesDesc": "Weekly & 4-week rules",
+      "sendNotifications": "Send Notifications",
+      "sendNotificationsDesc": "SMS & alert feeds",
+      "generateReports": "Generate Reports",
+      "generateReportsDesc": "Financial audit & ledger"
+    },
+    "aboutTabs": {
+      "history": "Organization History",
+      "mission": "Mission & Objectives",
+      "regulations": "Laws & Regulations"
+    },
+    "contact": {
+      "title": "Contact Us",
+      "subtitle": "Get in touch with us for questions, feedback, or community inquiries.",
+      "sendMessage": "Send Us a Message",
+      "meetingSchedule": "Meeting Schedule",
+      "meetingTime": "Every Saturday at 4:00 PM",
+      "location": "Melka Jabdu, Qaxaa Araati, Dire Dawa",
+      "namePlaceholder": "Your full name",
+      "phonePlaceholder": "+251 9...",
+      "messagePlaceholder": "Write your message here...",
+      "sendBtn": "Send Message",
+      "sendSuccess": "Your message has been sent successfully!"
+    }
+  },
+  "auth": {
+    "login": "Sign In",
+    "loginTitle": "Welcome back",
+    "loginSubtitle": "Sign in to your account",
+    "username": "Username",
+    "phone": "Phone Number",
+    "password": "Password",
+    "forgotPassword": "Forgot password?",
+    "forgotPasswordTitle": "Reset Password",
+    "forgotPasswordSubtitle": "Enter your phone number or email to receive a verification OTP code",
+    "enterOtp": "Enter OTP Code",
+    "otpSent": "An OTP code has been sent to your phone",
+    "newPassword": "New Password",
+    "confirmPassword": "Confirm Password",
+    "resetSuccess": "Your password has been successfully reset!",
+    "backToLogin": "Back to Login",
+    "loginFailed": "Invalid username or password",
+    "signingIn": "Signing in..."
+  }
+}

@@ -317,70 +317,114 @@ router.post('/contributions/weekly/generate', authenticate, authorize('ADMIN'), 
 });
 
 // Get all obligations (weekly + special) for a specific member
-router.get('/obligations/member/:memberId', authenticate, authorize('ADMIN', 'AUDITOR'), async (req: AuthRequest, res: Response) => {
+// Get all payable obligations (weekly, penalties, special, emergency, historical) for a specific member
+router.get('/obligations/member/:memberId', authenticate, async (req: AuthRequest, res: Response) => {
   const lang = req.lang || 'om';
   const memberId = String(req.params.memberId);
 
-  const [weekly, special] = await Promise.all([
-    prisma.weeklyObligation.findMany({
-      where: { 
-        memberId,
-        status: { in: ['PENDING', 'PARTIAL', 'OVERDUE'] }, // Only show unpaid/partial obligations
-      },
-      select: {
-        id: true,
-        contributionAmount: true,
-        amountPaid: true,
-        status: true,
-        dueDate: true,
-        weekNumber: true,
-        year: true,
-        payments: true,
-      },
-      orderBy: { dueDate: 'desc' },
-    }),
-    prisma.specialContributionObligation.findMany({
-      where: { 
-        memberId,
-        isExempt: false, // Don't show exempt obligations
-        status: { in: ['PENDING', 'PARTIAL', 'OVERDUE'] }, // Only show unpaid/partial obligations
-      },
-      select: {
-        id: true,
-        amount: true,
-        amountPaid: true,
-        status: true,
-        isExempt: true,
-        specialContribution: { select: { title: true, titleOm: true, type: true, dueDate: true } },
-        payments: true,
-      },
-      orderBy: { createdAt: 'desc' },
-    }),
-  ]);
+  // If member, verify ownership
+  if (req.user?.role === 'MEMBER') {
+    const mem = await prisma.member.findUnique({ where: { userId: req.user.userId } });
+    if (!mem || mem.id !== memberId) {
+      sendError(res, 'Unauthorized', lang, 403);
+      return;
+    }
+  }
 
-  const obligations = [
-    ...weekly.map(o => ({
-      id: o.id,
-      type: 'WEEKLY' as const,
-      amount: Number(o.contributionAmount),
-      amountPaid: Number(o.amountPaid),
-      status: o.status,
-      dueDate: o.dueDate,
-      weekNumber: o.weekNumber,
-      year: o.year,
-    })),
-    ...special.map(o => ({
-      id: o.id,
-      type: 'SPECIAL' as const,
-      amount: Number(o.amount),
-      amountPaid: Number(o.amountPaid),
-      status: o.status,
-      dueDate: o.specialContribution.dueDate,
-      title: o.specialContribution.title,
-      titleOm: o.specialContribution.titleOm,
-      campaignType: o.specialContribution.type,
-    })),
-  ];
+  const { getMemberFinancialSummary } = await import('../services/financial-calculator.service.js');
+  const summary = await getMemberFinancialSummary(memberId);
+
+  if (!summary) {
+    sendError(res, 'member.notFound', lang, 404);
+    return;
+  }
+
+  const obligations: any[] = [];
+
+  // 1. Weekly
+  for (const w of summary.weeklyObligations) {
+    if (w.status !== 'PAID') {
+      obligations.push({
+        id: w.id,
+        type: 'WEEKLY' as const,
+        amount: w.originalAmount,
+        amountPaid: w.amountPaid,
+        remainingAmount: w.remainingAmount,
+        status: w.status,
+        dueDate: w.dueDate,
+        weekNumber: w.weekNumber,
+        year: w.year,
+        title: `Week ${w.weekNumber}, ${w.year} Contribution`,
+      });
+    }
+  }
+
+  // 2. Penalties
+  for (const p of summary.penalties) {
+    if (p.status !== 'SETTLED' && p.status !== 'WAIVED') {
+      obligations.push({
+        id: p.id,
+        type: 'PENALTY' as const,
+        amount: p.originalAmount,
+        amountPaid: p.amountPaid,
+        remainingAmount: p.remainingAmount,
+        status: p.status,
+        reason: p.reason,
+        isMonthly: p.isMonthly,
+        weekNumber: p.weekNumber,
+        year: p.year,
+        dueDate: p.dueDate,
+        title: p.title || (p.isMonthly ? 'Monthly Missed Penalty' : `Penalty - ${p.reason}`),
+      });
+    }
+  }
+
+  // 3. Special Contributions
+  for (const s of summary.specialObligations) {
+    if (s.status !== 'PAID') {
+      obligations.push({
+        id: s.id,
+        type: 'SPECIAL' as const,
+        amount: s.originalAmount,
+        amountPaid: s.amountPaid,
+        remainingAmount: s.remainingAmount,
+        status: s.status,
+        dueDate: s.dueDate,
+        title: s.title,
+        campaignType: s.type,
+      });
+    }
+  }
+
+  // 4. Emergency Contributions
+  for (const e of summary.emergencyObligations) {
+    if (e.status !== 'PAID') {
+      obligations.push({
+        id: e.id,
+        type: 'EMERGENCY' as const,
+        amount: e.originalAmount,
+        amountPaid: e.amountPaid,
+        remainingAmount: e.remainingAmount,
+        status: e.status,
+        dueDate: e.dueDate,
+        title: e.title,
+      });
+    }
+  }
+
+  // 5. Historical Joining Obligation
+  if (summary.historicalObligation && summary.historicalObligation.status !== 'PAID' && summary.historicalObligation.status !== 'WAIVED') {
+    obligations.push({
+      id: summary.historicalObligation.id,
+      type: 'HISTORICAL' as const,
+      amount: summary.historicalObligation.originalAmount,
+      amountPaid: summary.historicalObligation.amountPaid,
+      remainingAmount: summary.historicalObligation.remainingAmount,
+      status: summary.historicalObligation.status,
+      dueDate: summary.historicalObligation.dueDate,
+      title: `Historical Back-Contribution (${summary.historicalObligation.backContributionWeeks} weeks)`,
+    });
+  }
 
   sendSuccess(res, obligations, 'general.success', lang);
 });
@@ -410,19 +454,19 @@ router.get('/obligations', authenticate, authorize('ADMIN', 'AUDITOR'), async (r
       take: 100,
     }),
     prisma.specialContributionObligation.findMany({
-      where: { status: { in: ['PENDING', 'OVERDUE', 'PARTIAL'] } },
       select: {
         id: true,
+        specialContributionId: true,
         memberId: true,
         amount: true,
         amountPaid: true,
         status: true,
         isExempt: true,
-        specialContribution: { select: { title: true, titleOm: true, type: true, dueDate: true } },
+        specialContribution: { select: { id: true, campaignId: true, title: true, titleOm: true, type: true, dueDate: true } },
         member: { select: { fullName: true, memberId: true } },
       },
       orderBy: { createdAt: 'desc' },
-      take: 100,
+      take: 200,
     }),
   ]);
 
@@ -443,6 +487,8 @@ router.get('/obligations', authenticate, authorize('ADMIN', 'AUDITOR'), async (r
     ...special.map(o => ({
       id: o.id,
       type: 'SPECIAL' as const,
+      specialContributionId: o.specialContributionId,
+      campaignId: o.specialContribution.campaignId,
       memberId: o.memberId,
       memberName: o.member.fullName,
       memberMemberId: o.member.memberId,
@@ -453,6 +499,7 @@ router.get('/obligations', authenticate, authorize('ADMIN', 'AUDITOR'), async (r
       title: o.specialContribution.title,
       titleOm: o.specialContribution.titleOm,
       campaignType: o.specialContribution.type,
+      isExempt: o.isExempt,
     })),
   ];
 

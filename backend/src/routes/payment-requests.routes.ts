@@ -1,4 +1,4 @@
-import { Router, Request, Response } from 'express';
+import { Router, Response } from 'express';
 import { z } from 'zod';
 import { authenticate, authorize, AuthRequest } from '../middleware/auth.js';
 import { validateBody, validateQuery } from '../middleware/validate.js';
@@ -11,28 +11,30 @@ const router = Router();
 // Schemas
 const createPaymentRequestSchema = z.object({
   amount: z.number().positive(),
-  paymentProvider: z.enum(['M_PESA', 'TELEBIRR', 'CBE', 'EBIRR']),
+  paymentProvider: z.enum(['M_PESA', 'TELEBIRR', 'CBE', 'EBIRR', 'BANK_TRANSFER']),
   obligationId: z.string().optional(),
-  specialContributionObligationId: z.string().optional()
+  penaltyId: z.string().optional(),
+  specialContributionObligationId: z.string().optional(),
+  category: z.enum(['WEEKLY', 'PENALTY', 'SPECIAL', 'EMERGENCY', 'HISTORICAL', 'ALL']).optional(),
 });
 
 const submitTransactionSchema = z.object({
   transactionReference: z.string().min(1),
-  receiptScreenshot: z.string().optional()
+  receiptScreenshot: z.string().optional(),
 });
 
 const verifyPaymentSchema = z.object({
   verificationMethod: z.enum(['AUTOMATIC', 'MANUAL']),
-  verificationNotes: z.string().optional()
+  verificationNotes: z.string().optional(),
 });
 
 const rejectPaymentSchema = z.object({
-  reason: z.string().min(1)
+  reason: z.string().min(1),
 });
 
 const paginationSchema = z.object({
   page: z.number().int().min(1).default(1),
-  limit: z.number().int().min(1).max(100).default(20)
+  limit: z.number().int().min(1).max(100).default(20),
 });
 
 // ── SPECIFIC ROUTES FIRST (before :id parameter) ──
@@ -45,7 +47,7 @@ router.get('/my', authenticate, authorize('MEMBER'), async (req: AuthRequest, re
   const lang = req.lang || 'om';
   try {
     const member = await prisma.member.findUnique({
-      where: { userId: req.user!.userId as string }
+      where: { userId: req.user!.userId as string },
     });
     if (!member) {
       sendError(res, 'member.notFound', lang, 404);
@@ -59,7 +61,7 @@ router.get('/my', authenticate, authorize('MEMBER'), async (req: AuthRequest, re
 });
 
 /**
- * Get all pending payment requests (admin)
+ * Get all pending payment requests (admin/auditor)
  * GET /payment-requests/admin/pending
  */
 router.get('/admin/pending', authenticate, authorize('ADMIN', 'AUDITOR'), validateQuery(paginationSchema), async (req: AuthRequest, res: Response) => {
@@ -83,32 +85,56 @@ router.post('/', authenticate, authorize('MEMBER'), validateBody(createPaymentRe
   const lang = req.lang || 'om';
   try {
     const member = await prisma.member.findUnique({
-      where: { userId: req.user!.userId as string }
+      where: { userId: req.user!.userId as string },
     });
     if (!member) {
       sendError(res, 'member.notFound', lang, 404);
       return;
     }
+
+    // Validate target obligation if provided
     if (req.body.obligationId) {
       const obligation = await prisma.weeklyObligation.findUnique({
-        where: { id: req.body.obligationId as string }
+        where: { id: req.body.obligationId as string },
       });
       if (!obligation || obligation.memberId !== member.id) {
         sendError(res, 'obligation.notFound', lang, 404);
         return;
       }
-      if (req.body.amount !== Number(obligation.totalDue)) {
-        sendError(res, 'Invalid payment amount', lang, 400);
+    }
+
+    // Validate target penalty if provided
+    if (req.body.penaltyId) {
+      const penalty = await prisma.penalty.findUnique({
+        where: { id: req.body.penaltyId as string },
+      });
+      if (!penalty || penalty.memberId !== member.id) {
+        sendError(res, 'penalty.notFound', lang, 404);
         return;
       }
     }
+
+    // Validate target special contribution if provided
+    if (req.body.specialContributionObligationId) {
+      const special = await prisma.specialContributionObligation.findUnique({
+        where: { id: req.body.specialContributionObligationId as string },
+      });
+      if (!special || special.memberId !== member.id) {
+        sendError(res, 'specialContribution.notFound', lang, 404);
+        return;
+      }
+    }
+
     const paymentRequest = await paymentRequestService.createPaymentRequest({
       memberId: member.id,
       amount: req.body.amount,
       paymentProvider: req.body.paymentProvider,
       obligationId: req.body.obligationId,
-      specialContributionObligationId: req.body.specialContributionObligationId
+      penaltyId: req.body.penaltyId,
+      specialContributionObligationId: req.body.specialContributionObligationId,
+      category: req.body.category,
     });
+
     sendSuccess(res, paymentRequest, 'general.success', lang, 201);
   } catch (error: any) {
     sendError(res, error.message, lang, 400);
@@ -131,7 +157,7 @@ router.get('/:id', authenticate, async (req: AuthRequest, res: Response) => {
     }
     if (req.user?.role === 'MEMBER') {
       const member = await prisma.member.findUnique({
-        where: { userId: req.user.userId as string }
+        where: { userId: req.user.userId as string },
       });
       if (member?.id !== request.memberId) {
         sendError(res, 'Unauthorized', lang, 403);
@@ -157,12 +183,13 @@ router.post('/:id/submit', authenticate, authorize('MEMBER'), validateBody(submi
       return;
     }
     const member = await prisma.member.findUnique({
-      where: { userId: req.user!.userId as string }
+      where: { userId: req.user!.userId as string },
     });
     if (member?.id !== paymentRequest.memberId) {
       sendError(res, 'Unauthorized', lang, 403);
       return;
     }
+
     const updated = await paymentRequestService.submitTransactionReference(
       req.params.id as string,
       req.body.transactionReference,
@@ -181,13 +208,13 @@ router.post('/:id/submit', authenticate, authorize('MEMBER'), validateBody(submi
 router.post('/:id/verify', authenticate, authorize('ADMIN', 'AUDITOR'), validateBody(verifyPaymentSchema), async (req: AuthRequest, res: Response) => {
   const lang = req.lang || 'om';
   try {
-    const { payment } = await paymentRequestService.verifyPaymentRequest(
+    const result = await paymentRequestService.verifyPaymentRequest(
       req.params.id as string,
       req.user!.userId as string,
       req.body.verificationMethod,
       req.body.verificationNotes
     );
-    sendSuccess(res, payment, 'general.success', lang, 200);
+    sendSuccess(res, result, 'general.success', lang, 200);
   } catch (error: any) {
     sendError(res, error.message, lang, 400);
   }

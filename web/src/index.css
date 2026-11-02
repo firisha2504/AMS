@@ -14,6 +14,13 @@
 
   --color-accent-500: #d97706;
   --color-accent-600: #b45309;
+
+  --color-navy-800: #0d1e5e;
+  --color-navy-900: #0a1931;
+  --color-navy-950: #060e24;
+
+  --color-slate-400: #64748b;
+  --color-gray-400: #6b7280;
 }
 
 * {

@@ -8,7 +8,11 @@ import '../config/api_config.dart';
 import 'profile_screen.dart';
 import 'contributions_screen.dart';
 import 'payment_screen.dart';
+import 'history_screen.dart';
 import 'notifications_screen.dart';
+import 'penalties_screen.dart';
+import 'attendance_screen.dart';
+import 'about_screen.dart';
 import 'more_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -49,8 +53,8 @@ class _HomeScreenState extends State<HomeScreen> {
           loading: _loading,
           onRefresh: _loadDashboard),
       const PaymentScreen(),
+      const HistoryScreen(),
       const NotificationsScreen(),
-      const MoreScreen(),
       const ProfileScreen(),
     ];
 
@@ -73,19 +77,19 @@ class _HomeScreenState extends State<HomeScreen> {
               NavigationDestination(
                   icon: const Icon(Icons.payment_outlined),
                   selectedIcon: const Icon(Icons.payment),
-                  label: isOm ? 'Kaffaltii' : 'Payments'),
+                  label: isOm ? 'Kaffaltiiwwan' : 'Payments'),
+              NavigationDestination(
+                  icon: const Icon(Icons.history_outlined),
+                  selectedIcon: const Icon(Icons.history),
+                  label: isOm ? 'Seenaa' : 'History'),
               NavigationDestination(
                   icon: const Icon(Icons.notifications_outlined),
                   selectedIcon: const Icon(Icons.notifications),
-                  label: isOm ? 'Akeekkachiisa' : 'Alerts'),
-              NavigationDestination(
-                  icon: const Icon(Icons.more_horiz),
-                  selectedIcon: const Icon(Icons.more_horiz),
-                  label: isOm ? 'Biroo' : 'More'),
+                  label: isOm ? 'Beeksisawwan' : 'Notifications'),
               NavigationDestination(
                   icon: const Icon(Icons.person_outlined),
                   selectedIcon: const Icon(Icons.person),
-                  label: isOm ? 'Profaayil' : 'Profile'),
+                  label: isOm ? 'Profaayilii' : 'Profile'),
             ],
           );
         },
@@ -345,6 +349,14 @@ class _DashboardTabState extends State<_DashboardTab> {
                         value: '${_fmt(widget.dashboard?['outstandingBalance'])} ETB',
                         icon: Icons.account_balance_wallet_outlined,
                         color: const Color(0xFFEA580C),
+                        onTap: () {
+                          final state = context.findAncestorStateOfType<_HomeScreenState>();
+                          if (state != null) {
+                            state.setState(() {
+                              state.currentIndex = 1;
+                            });
+                          }
+                        },
                       )),
                       const SizedBox(width: 10),
                       Expanded(child: _FinanceCard(
@@ -352,6 +364,9 @@ class _DashboardTabState extends State<_DashboardTab> {
                         value: '${_fmt(widget.dashboard?['totalPenalties'])} ETB',
                         icon: Icons.warning_amber_outlined,
                         color: const Color(0xFFDC2626),
+                        onTap: () {
+                          Navigator.push(context, MaterialPageRoute(builder: (_) => const PenaltiesScreen()));
+                        },
                       )),
                     ]),
                     const SizedBox(height: 20),
@@ -368,10 +383,15 @@ class _DashboardTabState extends State<_DashboardTab> {
                     // -- Attendance ──
                     _SectionTitle(title: widget.isOm ? 'Haala Argamaa' : 'Attendance'),
                     const SizedBox(height: 10),
-                    _AttendanceCard(
-                      percentage: (widget.dashboard?['attendancePercentage'] as num?)?.toInt() ?? 0,
-                      isOm: widget.isOm,
-                      primary: primary,
+                    GestureDetector(
+                      onTap: () {
+                        Navigator.push(context, MaterialPageRoute(builder: (_) => const AttendanceScreen()));
+                      },
+                      child: _AttendanceCard(
+                        percentage: (widget.dashboard?['attendancePercentage'] as num?)?.toInt() ?? 0,
+                        isOm: widget.isOm,
+                        primary: primary,
+                      ),
                     ),
                     const SizedBox(height: 20),
 
@@ -454,7 +474,7 @@ class _NotificationBanner extends StatelessWidget {
             final state = context.findAncestorStateOfType<_HomeScreenState>();
             if (state != null) {
               state.setState(() {
-                state.currentIndex = 2;
+                state.currentIndex = 3;
               });
             }
           },
@@ -870,9 +890,40 @@ class _QuickActions extends StatelessWidget {
       builder: (context, themeProvider, _) {
         final isDark = themeProvider.isDarkMode;
         final actions = [
-          _Action(icon: Icons.payment_outlined, label: isOm ? 'Kaffaltii' : 'Payments', color: primary, index: 1),
-          _Action(icon: Icons.receipt_long_outlined, label: isOm ? 'Herrega' : 'Receipts', color: gold, index: 3),
-          _Action(icon: Icons.event_available_outlined, label: isOm ? 'Argama' : 'Attendance', color: Colors.teal.shade600, index: 3),
+          _Action(
+            icon: Icons.payment_outlined,
+            label: isOm ? 'Kaffaltii' : 'Payments',
+            color: primary,
+            onTap: () {
+              final state = context.findAncestorStateOfType<_HomeScreenState>();
+              if (state != null) state.setState(() => state.currentIndex = 1);
+            },
+          ),
+          _Action(
+            icon: Icons.history_outlined,
+            label: isOm ? 'Seenaa' : 'History',
+            color: const Color(0xFF091540),
+            onTap: () {
+              final state = context.findAncestorStateOfType<_HomeScreenState>();
+              if (state != null) state.setState(() => state.currentIndex = 2);
+            },
+          ),
+          _Action(
+            icon: Icons.event_available_outlined,
+            label: isOm ? 'Argama' : 'Attendance',
+            color: Colors.teal.shade600,
+            onTap: () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const AttendanceScreen()));
+            },
+          ),
+          _Action(
+            icon: Icons.gavel_outlined,
+            label: isOm ? 'Heera' : 'By-Laws',
+            color: gold,
+            onTap: () {
+              Navigator.push(context, MaterialPageRoute(builder: (_) => const AboutScreen()));
+            },
+          ),
         ];
 
         return GridView.count(
@@ -885,14 +936,7 @@ class _QuickActions extends StatelessWidget {
               .map((a) => _ActionTile(
                     action: a,
                     isDark: isDark,
-                    onTap: () {
-                      final state = context.findAncestorStateOfType<_HomeScreenState>();
-                      if (state != null) {
-                        state.setState(() {
-                          state.currentIndex = a.index;
-                        });
-                      }
-                    },
+                    onTap: a.onTap,
                   ))
               .toList(),
         );
@@ -905,9 +949,9 @@ class _Action {
   final IconData icon;
   final String label;
   final Color color;
-  final int index; // bottom nav index to jump to
+  final VoidCallback onTap;
 
-  const _Action({required this.icon, required this.label, required this.color, required this.index});
+  const _Action({required this.icon, required this.label, required this.color, required this.onTap});
 }
 
 class _ActionTile extends StatelessWidget {

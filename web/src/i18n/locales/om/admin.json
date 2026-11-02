@@ -1,0 +1,30 @@
+{
+  "admin": {
+    "title": "Daashboordii Bulchiinsaa",
+    "settings": "Qindaa'ina Sirnaa",
+    "backup": "Kuusaa fi Deebisuu",
+    "teamManagement": "Bulchiinsa Koree fi Hojjettoota",
+    "publicContent": "Bulchiinsa Qabiyyee Ummataa",
+    "smsManagement": "Bulchiinsa Ergaa SMS",
+    "rateHistory": "Seenaa Sadarkaa Kaffaltii",
+    "auditLogs": "Galmee Madaallii fi Sochii",
+    "financialLedger": "Galmee Maallaqaa (Ledger)",
+    "categoryOverview": "Gabaasa Kaffaltiiwwan Hunda (Gosoota 7) - Bulchiinsa",
+    "categorySubtitle": "Haala kaffaltii qabatamaa, gosa kaffaltii fi hordoffii maallaqaa",
+    "backupNow": "Amma Kuusaa Hojjedhu",
+    "restore": "Deebisi",
+    "rates": {
+      "weeklyRate": "Sadarkaa Kaffaltii Torbanii",
+      "weeklyPenaltyRate": "Sadarkaa Adabbii Torbanii",
+      "monthlyPenaltyRate": "Sadarkaa Adabbii Ji'aa",
+      "graduationRate": "Sadarkaa Gumaacha Eebbaa",
+      "bereavementRate": "Sadarkaa Gumaacha Gadaa/Du'aa"
+    },
+    "sms": {
+      "sendSMS": "SMS Ergi",
+      "template": "Qophii Ergaa",
+      "recipients": "Fudhattoota",
+      "sentSuccessfully": "Ergaan SMS milkaa'inaan ergameera"
+    }
+  }
+}

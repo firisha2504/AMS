@@ -1,0 +1,20 @@
+{
+  "notifications": {
+    "title": "Beeksisawwan",
+    "unread": "hin dubbifamne",
+    "markAllRead": "Hunda Akka Dubbifametti Mallatteessi",
+    "noNotifications": "Beeksisni Hin Jiru",
+    "allCaughtUp": "Hundumaa dubbistaniirtu!",
+    "newAlertsWillAppear": "Beeksisni haaraan asitti mul'ata.",
+    "meeting": "Beeksisa Walga'ii",
+    "payment": "Mirkaneessa Kaffaltii",
+    "penalty": "Akeekkachiisa Adabbii",
+    "attendance": "Argama Walga'ii",
+    "present": "Argameera",
+    "absent": "Hin argamne",
+    "excused": "Hayyama Qaba",
+    "recordAttendance": "Argama Galmeessi",
+    "meetingDate": "Guyyaa Walga'ii",
+    "meetingLocation": "Iddoo Walga'ii"
+  }
+}

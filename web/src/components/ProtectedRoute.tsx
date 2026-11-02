@@ -4,7 +4,7 @@ import Layout from '../components/Layout';
 import { LoadingSpinner } from '../components/ui';
 
 export default function ProtectedRoute() {
-  const { isAuthenticated, isLoading, user } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {
     return (
@@ -15,10 +15,6 @@ export default function ProtectedRoute() {
   }
 
   if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
-
-  if (user?.role === 'MEMBER') {
     return <Navigate to="/login" replace />;
   }
 

@@ -1,11 +1,12 @@
 import { Router, Response } from 'express';
 import prisma from '../config/database.js';
 import { AuthRequest, authenticate, authorize } from '../middleware/auth.js';
+import { upload } from '../middleware/upload.js';
 import { sendSuccess, sendError } from '../utils/response.js';
 
 const router = Router();
 
-// Get all team members and leaders
+// Get all team members and leaders (Public)
 router.get('/', async (_req: AuthRequest, res: Response) => {
   try {
     const team = await prisma.systemSetting.findUnique({
@@ -28,7 +29,21 @@ router.get('/', async (_req: AuthRequest, res: Response) => {
   }
 });
 
-// Save team members and leaders (admin only)
+// Upload image file for leader or team member (Admin only)
+router.post('/upload', authenticate, authorize('ADMIN'), upload.single('image'), async (req: AuthRequest, res: Response) => {
+  try {
+    if (!req.file) {
+      sendError(res, 'No image file uploaded', 'om', 400);
+      return;
+    }
+    const imageUrl = `/uploads/${req.file.filename}`;
+    sendSuccess(res, { imageUrl }, 'general.success', 'om');
+  } catch (error) {
+    sendError(res, 'general.error', 'om', 500);
+  }
+});
+
+// Save team members and leaders (Admin only)
 router.post('/', authenticate, authorize('ADMIN'), async (req: AuthRequest, res: Response) => {
   try {
     const { members } = req.body;
