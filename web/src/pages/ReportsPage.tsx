@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Download, FileText, TrendingUp, Users, Calendar, AlertCircle } from 'lucide-react';
 import { api } from '../lib/api';
-import { PageHeader, LoadingSpinner, btnPrimary, Select, DateInput } from '../components/ui';
+import { PageHeader, LoadingSpinner, btnPrimary, Select } from '../components/ui';
+import EthiopianDatePicker from '../components/EthiopianDatePicker';
+import { useCalendar } from '../contexts/CalendarContext';
 
 const REPORT_TYPES = [
   { id: 'unpaid', label: 'Unpaid Contributions' },
@@ -559,6 +561,7 @@ function UnpaidContributionsReport({ data }: { data: UnpaidData }) {
 // ── Main component ────────────────────────────────────────────────────────────
 export default function ReportsPage() {
   const { t } = useTranslation();
+  const { formatDate } = useCalendar();
   const [type, setType] = useState('contributions');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
@@ -631,8 +634,8 @@ export default function ReportsPage() {
             onChange={e => { setType(e); setData(null); setGenerated(false); }}
             options={REPORT_TYPES.map(r => ({ value: r.id, label: r.label }))}
           />
-          <DateInput value={from} onChange={setFrom} label="From Date" />
-          <DateInput value={to} onChange={setTo} label="To Date" />
+          <EthiopianDatePicker label="From Date (Ethiopian)" value={from} onChange={setFrom} />
+          <EthiopianDatePicker label="To Date (Ethiopian)" value={to} onChange={setTo} />
           <button className={btnPrimary} onClick={generate} disabled={loading}>
             {loading ? 'Generating…' : t('common.generate', 'Generate')}
           </button>
@@ -662,9 +665,9 @@ export default function ReportsPage() {
             </div>
             {from || to ? (
               <span className="text-xs text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-                {from && `From ${new Date(from).toLocaleDateString()}`}
+                {from && `From ${formatDate(from, { includeDual: true })}`}
                 {from && to && ' – '}
-                {to && `To ${new Date(to).toLocaleDateString()}`}
+                {to && `To ${formatDate(to, { includeDual: true })}`}
               </span>
             ) : null}
           </div>

@@ -4,6 +4,7 @@ import { AlertCircle, CheckCircle2, Gift, XCircle, Search, PlusCircle, CreditCar
 import { api } from '../lib/api';
 import { PageHeader, LoadingSpinner, Modal, inputClass, btnSecondary, Select } from '../components/ui';
 import { useAuth } from '../contexts/AuthContext';
+import { useCalendar } from '../contexts/CalendarContext';
 import { formatMeetingLabel } from '../lib/meetingUtils';
 
 interface Penalty {
@@ -38,6 +39,7 @@ interface Member {
 export default function PenaltiesPage() {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const { formatDate } = useCalendar();
   const isAdmin = user?.role === 'ADMIN';
 
   const [penalties, setPenalties] = useState<PenaltyWithMember[]>([]);
@@ -379,11 +381,11 @@ export default function PenaltiesPage() {
                 </td>
                 <td className="px-5 py-3">
                   <p className="text-xs text-slate-500">
-                    {new Date(penalty.createdAt).toLocaleDateString()}
+                    {formatDate(penalty.createdAt, { includeDual: true })}
                   </p>
                   {penalty.paidAt && (
                     <p className="text-xs text-emerald-600">
-                      Paid: {new Date(penalty.paidAt).toLocaleDateString()}
+                      Paid: {formatDate(penalty.paidAt, { includeDual: true })}
                     </p>
                   )}
                 </td>

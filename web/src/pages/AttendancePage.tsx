@@ -2,8 +2,10 @@ import { useEffect, useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Plus, Pencil, Trash2, Users, ClipboardList, ChevronDown, ChevronRight } from 'lucide-react';
 import { api } from '../lib/api';
-import { PageHeader, Badge, LoadingSpinner, Modal, inputClass, btnPrimary, btnSecondary, DateInput, TimeInput, Select } from '../components/ui';
+import { PageHeader, Badge, LoadingSpinner, Modal, inputClass, btnPrimary, btnSecondary, TimeInput, Select } from '../components/ui';
 import { useAuth } from '../contexts/AuthContext';
+import { useCalendar } from '../contexts/CalendarContext';
+import EthiopianDatePicker from '../components/EthiopianDatePicker';
 
 interface Meeting { id: string; title: string; meetingDate: string; location?: string; agenda?: string; meetingTime?: string; }
 interface Member { id: string; fullName: string; memberId: string; }
@@ -14,6 +16,7 @@ const STATUS_OPTIONS = ['PRESENT', 'ABSENT', 'EXCUSED'];
 export default function AttendancePage() {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const { formatDate } = useCalendar();
   const isAdmin = user?.role === 'ADMIN';
 
   const [meetings, setMeetings] = useState<Meeting[]>([]);
@@ -266,7 +269,7 @@ export default function AttendancePage() {
                       <div>
                         <h3 className="font-semibold text-sm text-slate-800">{meeting.title}</h3>
                         <p className="text-xs text-slate-500">
-                          {new Date(meeting.meetingDate).toLocaleDateString()}
+                          {formatDate(meeting.meetingDate, { includeDual: true })}
                           {meeting.meetingTime && ` · ${meeting.meetingTime}`}
                           {meeting.location && ` · ${meeting.location}`}
                         </p>
@@ -383,8 +386,8 @@ export default function AttendancePage() {
             <input className={inputClass} placeholder="Location" value={meetingForm.location} onChange={(e) => setMeetingForm({ ...meetingForm, location: e.target.value })} />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <DateInput 
-              label="Date *" 
+            <EthiopianDatePicker 
+              label="Meeting Date (Ethiopian) *" 
               value={meetingForm.meetingDate} 
               onChange={(val) => setMeetingForm({ ...meetingForm, meetingDate: val })} 
               required 
@@ -418,7 +421,7 @@ export default function AttendancePage() {
               onChange={setSelectedMeeting}
               options={[
                 { value: '', label: '-- Select a meeting --' },
-                ...meetings.map(m => ({ value: m.id, label: `${m.title} — ${new Date(m.meetingDate).toLocaleDateString()}` }))
+                ...meetings.map(m => ({ value: m.id, label: `${m.title} — ${formatDate(m.meetingDate, { includeDual: true })}` }))
               ]}
             />
           </div>

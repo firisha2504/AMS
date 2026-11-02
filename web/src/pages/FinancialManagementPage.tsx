@@ -9,13 +9,13 @@ import SpecialContributionsPage from './SpecialContributionsPage';
 type Tab = 'penalties' | 'fines' | 'special';
 
 export default function FinancialManagementPage() {
-  const [_t] = useTranslation();
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<Tab>('penalties');
 
   const tabs = [
-    { id: 'penalties' as Tab, label: 'Penalties', icon: AlertCircle },
-    { id: 'fines' as Tab, label: 'Fines', icon: DollarSign },
-    { id: 'special' as Tab, label: 'Special Contributions', icon: Gift },
+    { id: 'penalties' as Tab, label: t('Penalties', { defaultValue: 'Penalties' }), icon: AlertCircle },
+    { id: 'fines' as Tab, label: t('Fines', { defaultValue: 'Fines' }), icon: DollarSign },
+    { id: 'special' as Tab, label: t('Special Contributions', { defaultValue: 'Special Contributions' }), icon: Gift },
   ];
 
   const tabStyles: Record<Tab, { active: string; icon: string }> = {
@@ -26,7 +26,7 @@ export default function FinancialManagementPage() {
 
   return (
     <div>
-      <PageHeader title="Financial Management" />
+      <PageHeader title={t('Financial Management', { defaultValue: 'Financial Management' })} />
       
       {/* Tabs */}
       <div className="bg-white rounded-xl border mb-6">

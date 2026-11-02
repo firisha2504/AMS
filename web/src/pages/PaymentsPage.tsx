@@ -4,6 +4,7 @@ import { Plus, Receipt, Users, CheckCircle2, AlertCircle, RotateCcw, ChevronDown
 import { api } from '../lib/api';
 import { PageHeader, Badge, LoadingSpinner, Modal, inputClass, btnPrimary, btnSecondary, Select, DateInput } from '../components/ui';
 import { formatMeetingLabel, formatMeetingShort } from '../lib/meetingUtils';
+import { useCalendar } from '../contexts/CalendarContext';
 
 export interface AllocationItem {
   id: string;
@@ -60,6 +61,7 @@ const getAllocationCategoryName = (type: string, isOm: boolean) => {
 
 export default function PaymentsPage() {
   const { t, i18n } = useTranslation();
+  const { formatDate } = useCalendar();
   const isOm = i18n.language === 'om';
 
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -721,7 +723,7 @@ export default function PaymentsPage() {
                               )}
                             </td>
                             <td className="px-5 py-3 text-sm text-slate-500">
-                              {new Date(obligation.dueDate).toLocaleDateString()}
+                              {formatDate(obligation.dueDate, { includeDual: true })}
                             </td>
                             <td className="px-5 py-3 text-right text-sm font-semibold text-slate-800">
                               {Number(obligation.amount).toLocaleString()} ETB
@@ -827,7 +829,7 @@ export default function PaymentsPage() {
                                       {Number(obligation.amount).toLocaleString()} ETB
                                     </td>
                                     <td className="px-5 py-3 text-xs text-emerald-600">{Number(obligation.amountPaid).toLocaleString()} ETB</td>
-                                    <td className="px-5 py-3 text-sm text-slate-500">{new Date(obligation.dueDate || Date.now()).toLocaleDateString()}</td>
+                                    <td className="px-5 py-3 text-sm text-slate-500">{formatDate(obligation.dueDate, { includeDual: true })}</td>
                                     <td className="px-5 py-3">
                                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${statusColor}`}>
                                         {obligation.status}
@@ -906,7 +908,7 @@ export default function PaymentsPage() {
                                     {Number(obligation.amount).toLocaleString()} ETB
                                   </td>
                                   <td className="px-5 py-3 text-xs text-emerald-600">{Number(obligation.amountPaid).toLocaleString()} ETB</td>
-                                  <td className="px-5 py-3 text-sm text-slate-500">{new Date(obligation.dueDate || Date.now()).toLocaleDateString()}</td>
+                                  <td className="px-5 py-3 text-sm text-slate-500">{formatDate(obligation.dueDate, { includeDual: true })}</td>
                                   <td className="px-5 py-3">
                                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold ${statusColor}`}>
                                       {obligation.status}
@@ -967,7 +969,7 @@ export default function PaymentsPage() {
                                 {p.paymentMethod.replace(/_/g, ' ').toLowerCase()}
                               </td>
                               <td className="px-5 py-3 text-sm text-slate-500">
-                                {new Date(p.paymentDate).toLocaleDateString()}
+                                {formatDate(p.paymentDate, { includeDual: true })}
                               </td>
                               <td className="px-5 py-3">
                                 <Badge status={p.status} />
@@ -1035,7 +1037,7 @@ export default function PaymentsPage() {
                 { label: 'Member', value: verifyTarget.member.fullName },
                 { label: 'Member ID', value: `#${verifyTarget.member.memberId}` },
                 { label: 'Method', value: verifyTarget.paymentMethod.replace(/_/g, ' ') },
-                { label: 'Date', value: new Date(verifyTarget.paymentDate).toLocaleDateString() },
+                { label: 'Date', value: formatDate(verifyTarget.paymentDate, { includeDual: true }) },
               ].map(({ label, value }) => (
                 <div key={label} className="flex justify-between text-sm border-b border-emerald-100 pb-1.5 last:border-0 last:pb-0">
                   <span className="text-slate-500">{label}</span>
@@ -1253,7 +1255,7 @@ export default function PaymentsPage() {
                         { value: '', label: '-- Select obligation (optional) --' },
                         ...obligations.map(o => ({
                           value: o.id,
-                          label: `${o.type === 'WEEKLY' ? 'Weekly' : 'Special'} - ${o.title} - Due: ${o.dueDate ? new Date(o.dueDate).toLocaleDateString() : 'N/A'} - Remaining: ${Number(o.amount - o.amountPaid).toLocaleString()} ETB`
+                          label: `${o.type === 'WEEKLY' ? 'Weekly' : 'Special'} - ${o.title} - Due: ${o.dueDate ? formatDate(o.dueDate, { includeDual: true }) : 'N/A'} - Remaining: ${Number(o.amount - o.amountPaid).toLocaleString()} ETB`
                         }))
                       ]}
                     />

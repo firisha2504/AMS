@@ -21,12 +21,16 @@ import ContactPage from './pages/public/ContactPage';
 import ProfilePage from './pages/ProfilePage';
 import PublicContentPage from './pages/PublicContentPage';
 import TeamManagementPage from './pages/TeamManagementPage';
+import { CalendarProvider } from './contexts/CalendarContext';
+import WeeklyPeriodManagementPage from './pages/admin/WeeklyPeriodManagementPage';
+import BulkMemberRegistrationPage from './pages/admin/BulkMemberRegistrationPage';
 import './i18n';
 
 function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
+      <CalendarProvider>
+        <BrowserRouter>
           <style>{`
             /* Prevent horizontal overflow on all devices */
             html, body, #root {
@@ -97,7 +101,10 @@ function App() {
             <Route element={<ProtectedRoute />}>
               <Route path="/dashboard" element={<DashboardPage />} />
               <Route path="/members" element={<MembersPage />} />
+              <Route path="/members/bulk-register" element={<BulkMemberRegistrationPage />} />
+              <Route path="/bulk-registration" element={<BulkMemberRegistrationPage />} />
               <Route path="/financial" element={<FinancialManagementPage />} />
+              <Route path="/weekly-periods" element={<WeeklyPeriodManagementPage />} />
               <Route path="/records" element={<MemberRecordsPage />} />
               <Route path="/logs" element={<ActivityLogsPage />} />
               <Route path="/attendance" element={<AttendancePage />} />
@@ -112,8 +119,9 @@ function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </BrowserRouter>
-      </AuthProvider>
-    );
-  }
+      </CalendarProvider>
+    </AuthProvider>
+  );
+}
 
 export default App;

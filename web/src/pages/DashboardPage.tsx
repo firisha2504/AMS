@@ -16,6 +16,7 @@ import {
 import { api } from '../lib/api';
 import { LoadingSpinner } from '../components/ui';
 import { useAuth } from '../contexts/AuthContext';
+import { useCalendar } from '../contexts/CalendarContext';
 import CategoryMetricsOverview, { type CategoryMetric } from '../components/CategoryMetricsOverview';
 import DashboardAnalyticsCharts from '../components/DashboardAnalyticsCharts';
 
@@ -90,6 +91,7 @@ interface DashboardActivityItem {
 export default function DashboardPage() {
   const [_t] = useTranslation();
   const { user } = useAuth();
+  const { formatDate } = useCalendar();
   const [adminData, setAdminData] = useState<AdminDashboard | null>(null);
   const [chartData, setChartData] = useState<ChartData | null>(null);
   const [auditorData, setAuditorData] = useState<AuditorData | null>(null);
@@ -285,8 +287,14 @@ export default function DashboardPage() {
             <div className="text-3xl font-extrabold tracking-tight">
               {Number(mem.dueThisSaturday).toLocaleString()} ETB
             </div>
-            <p className="text-xs text-blue-100 mt-2">
-              Payment deadline: Saturday 6:00 PM
+            <p className="text-xs text-blue-100 mt-2 font-medium">
+              Payment deadline: {(() => {
+                const d = new Date();
+                const day = d.getDay();
+                const diff = (6 - day + 7) % 7;
+                d.setDate(d.getDate() + (diff === 0 ? 7 : diff));
+                return formatDate(d, { includeWeekday: true, includeDual: true });
+              })()} 6:00 PM
             </p>
           </div>
 

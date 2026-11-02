@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
-import { UserPlus, Plus, Pencil, Trash2, KeyRound, ShieldCheck, Users, UserCog, CheckCircle2, XCircle, Eye, EyeOff } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
+import { UserPlus, Plus, Pencil, Trash2, KeyRound, ShieldCheck, Users, UserCog, CheckCircle2, XCircle, Eye, EyeOff, UploadCloud, FileSpreadsheet } from 'lucide-react';
 import { api } from '../lib/api';
 import { PageHeader, Badge, LoadingSpinner, Modal, inputClass, btnPrimary, btnSecondary, Select, DateInput } from '../components/ui';
 import { useAuth } from '../contexts/AuthContext';
@@ -30,6 +32,9 @@ const emptyMemberForm = {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function MembersPage() {
+  const { i18n } = useTranslation();
+  const lang = i18n.language === 'en' ? 'en' : 'om';
+  const isOm = lang === 'om';
   const { user } = useAuth();
   const isAdmin = user?.role === 'ADMIN';
 
@@ -203,17 +208,30 @@ export default function MembersPage() {
   return (
     <div>
       <PageHeader
-        title="Members & Staff"
+        title={isOm ? 'Bulchiinsa Miseensotaa' : 'Members & Staff'}
         action={isAdmin && (
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             {tab === 'members' && (
-              <button className={btnPrimary} onClick={() => { setShowAddMember(true); setMemberError(''); }}>
-                <UserPlus size={15} className="inline mr-1" />Add Member
-              </button>
+              <>
+                <button
+                  className={`${btnSecondary} flex items-center gap-1.5`}
+                  onClick={() => { setShowAddMember(true); setMemberError(''); }}
+                >
+                  <UserPlus size={15} className="text-blue-600" />
+                  <span>{isOm ? 'Galmee Dhuunfaa' : 'Individual Registration'}</span>
+                </button>
+                <Link
+                  to="/members/bulk-register"
+                  className={`${btnPrimary} flex items-center gap-1.5`}
+                >
+                  <UploadCloud size={15} />
+                  <span>{isOm ? "Galmee Baay'ee (Excel/CSV)" : 'Bulk Member Registration'}</span>
+                </Link>
+              </>
             )}
             {tab === 'auditors' && (
               <button className={btnPrimary} onClick={() => { setShowCreateAuditor(true); setAuditorError(''); }}>
-                <Plus size={15} className="inline mr-1" />Create Auditor
+                <Plus size={15} className="inline mr-1" />{isOm ? 'Odiitara Haaraa Uumi' : 'Create Auditor'}
               </button>
             )}
           </div>
@@ -221,18 +239,32 @@ export default function MembersPage() {
       />
 
       {/* ── Tabs ── */}
-      <div className="flex gap-1 mb-6 bg-slate-100 p-1 rounded-xl w-fit">
-        <button onClick={() => setTab('members')}
-          className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-medium transition-all ${tab === 'members' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}>
-          <Users size={15} />Members
-          <span className="px-1.5 py-0.5 rounded-full text-xs bg-slate-200 text-slate-600">{members.length}</span>
-        </button>
-        {isAdmin && (
-          <button onClick={() => setTab('auditors')}
-            className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-medium transition-all ${tab === 'auditors' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}>
-            <UserCog size={15} />Auditors
-            <span className="px-1.5 py-0.5 rounded-full text-xs bg-slate-200 text-slate-600">{auditors.length}</span>
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-6">
+        <div className="flex gap-1 bg-slate-100 p-1 rounded-xl w-fit">
+          <button onClick={() => setTab('members')}
+            className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-medium transition-all ${tab === 'members' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}>
+            <Users size={15} />{isOm ? 'Miseensota' : 'Members'}
+            <span className="px-1.5 py-0.5 rounded-full text-xs bg-slate-200 text-slate-600">{members.length}</span>
           </button>
+          {isAdmin && (
+            <button onClick={() => setTab('auditors')}
+              className={`flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-medium transition-all ${tab === 'auditors' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}>
+              <UserCog size={15} />{isOm ? 'Odiitaroota' : 'Auditors'}
+              <span className="px-1.5 py-0.5 rounded-full text-xs bg-slate-200 text-slate-600">{auditors.length}</span>
+            </button>
+          )}
+        </div>
+
+        {isAdmin && tab === 'members' && (
+          <div className="flex items-center gap-2">
+            <Link
+              to="/members/bulk-register"
+              className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition"
+            >
+              <FileSpreadsheet size={14} />
+              {isOm ? 'Galmee Baay\'ee & Seenaa' : 'Bulk Import & History'}
+            </Link>
+          </div>
         )}
       </div>
 
@@ -252,7 +284,7 @@ export default function MembersPage() {
 
           {/* Filters */}
           <div className="mb-5 flex flex-col sm:flex-row flex-wrap gap-2 sm:gap-3">
-            <input type="text" placeholder="Search by name, ID, or phone..."
+            <input type="text" placeholder={isOm ? 'Maqaa, Lakk. Miseensaa, ykn Bilbilaan barbaadi...' : 'Search by name, ID, or phone...'}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && fetchMembers()}
@@ -260,19 +292,26 @@ export default function MembersPage() {
             <Select 
               value={statusFilter} 
               onChange={setStatusFilter}
-              options={STATUS_FILTERS.map(s => ({ value: s, label: s || 'All Statuses' }))}
+              options={STATUS_FILTERS.map(s => ({
+                value: s,
+                label: s
+                  ? (isOm
+                      ? s === 'APPROVED' ? 'Mirkanaa\'e' : s === 'PENDING' ? 'Eegaa Jira' : s === 'REJECTED' ? 'Didame' : s === 'SUSPENDED' ? 'Dhaabbate' : s
+                      : s)
+                  : (isOm ? 'Haalawwan Hunda' : 'All Statuses')
+              }))}
             />
-            <button className={btnSecondary} onClick={fetchMembers}>Search</button>
+            <button className={btnSecondary} onClick={fetchMembers}>{isOm ? 'Barbaadi' : 'Search'}</button>
           </div>
 
           {/* Summary counts */}
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-5">
             {[
-              { label: 'Total', count: members.length, color: '#64748b' },
-              { label: 'Approved', count: members.filter(m => m.status === 'APPROVED').length, color: '#16a34a' },
-              { label: 'Pending', count: members.filter(m => m.status === 'PENDING').length, color: '#ca8a04' },
-              { label: 'Rejected', count: members.filter(m => m.status === 'REJECTED').length, color: '#dc2626' },
-              { label: 'Suspended', count: members.filter(m => m.status === 'SUSPENDED').length, color: '#7c3aed' },
+              { label: isOm ? 'Ida\'ama' : 'Total', count: members.length, color: '#64748b' },
+              { label: isOm ? 'Mirkanaa\'an' : 'Approved', count: members.filter(m => m.status === 'APPROVED').length, color: '#16a34a' },
+              { label: isOm ? 'Eegaa Jiran' : 'Pending', count: members.filter(m => m.status === 'PENDING').length, color: '#ca8a04' },
+              { label: isOm ? 'Didaman' : 'Rejected', count: members.filter(m => m.status === 'REJECTED').length, color: '#dc2626' },
+              { label: isOm ? 'Dhaabbatan' : 'Suspended', count: members.filter(m => m.status === 'SUSPENDED').length, color: '#7c3aed' },
             ].map((c) => (
               <div key={c.label} className="bg-white rounded-xl border p-3 text-center">
                 <p className="text-xl font-bold" style={{ color: c.color }}>{c.count}</p>
@@ -287,17 +326,17 @@ export default function MembersPage() {
                 <table>
                   <thead className="bg-slate-50">
                     <tr>
-                      <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Member ID</th>
-                      <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Full Name</th>
-                      <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Phone</th>
-                      <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Registered</th>
-                      <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Status</th>
-                      <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase">Actions</th>
+                      <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase">{isOm ? 'Lakk. Miseensaa' : 'Member ID'}</th>
+                      <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase">{isOm ? 'Maqaa Guutuu' : 'Full Name'}</th>
+                      <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase">{isOm ? 'Bilbila' : 'Phone'}</th>
+                      <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase">{isOm ? 'Guyyaa Galmee' : 'Registered'}</th>
+                      <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase">{isOm ? 'Haala' : 'Status'}</th>
+                      <th className="px-5 py-3 text-left text-xs font-semibold text-slate-500 uppercase">{isOm ? 'Gochaalee' : 'Actions'}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y">
                   {members.length === 0 ? (
-                    <tr><td colSpan={6} className="px-5 py-10 text-center text-sm text-slate-400">No members found.</td></tr>
+                    <tr><td colSpan={6} className="px-5 py-10 text-center text-sm text-slate-400">{isOm ? 'Miseensotni hin argamne.' : 'No members found.'}</td></tr>
                   ) : members.map((m) => (
                     <tr key={m.id} className="hover:bg-slate-50">
                       <td className="px-5 py-3 text-xs font-mono text-slate-500">{m.memberId}</td>

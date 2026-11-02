@@ -155,6 +155,7 @@ model User {
   yearEndApprovals  YearEndSummary[] @relation("YearEndApprovals")
   authorizedReversals TransactionReversal[] @relation("AuthorizedReversals")
   waivedPenalties   Penalty[]        @relation("WaivedPenalties")
+  bulkImports       BulkImportJob[]  @relation("BulkImports")
 
   @@index([role])
   @@index([phone])
@@ -222,9 +223,40 @@ model EmergencyContact {
   member Member @relation(fields: [memberId], references: [id], onDelete: Cascade)
 }
 
+model WeeklyPeriod {
+  id                  String   @id @default(uuid())
+  periodId            String   @unique
+  ethiopianYear       Int
+  ethiopianMonth      Int
+  ethiopianMonthName  String
+  weekNumber          Int
+  ethiopianStartDate  String
+  ethiopianEndDate    String
+  ethiopianDueDate    String
+  startDate           DateTime
+  endDate             DateTime
+  dueDate             DateTime
+  contributionAmount  Decimal  @default(50) @db.Decimal(12, 2)
+  isGenerated         Boolean  @default(false)
+  obligationsCount    Int      @default(0)
+  totalExpected       Decimal  @default(0) @db.Decimal(12, 2)
+  totalCollected      Decimal  @default(0) @db.Decimal(12, 2)
+  totalOutstanding    Decimal  @default(0) @db.Decimal(12, 2)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  weeklyObligations   WeeklyObligation[]
+
+  @@unique([ethiopianYear, weekNumber])
+  @@index([ethiopianYear, ethiopianMonth])
+  @@index([dueDate])
+}
+
 model WeeklyObligation {
   id              String           @id @default(uuid())
   memberId        String
+  weeklyPeriodId  String?
+  ethiopianPeriodId String?
   weekNumber      Int
   year            Int
   dueDate         DateTime
@@ -238,14 +270,16 @@ model WeeklyObligation {
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
 
-  member   Member    @relation(fields: [memberId], references: [id], onDelete: Cascade)
-  payments Payment[]
+  member          Member           @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  weeklyPeriod    WeeklyPeriod?    @relation(fields: [weeklyPeriodId], references: [id], onDelete: SetNull)
+  payments        Payment[]
   paymentRequests PaymentRequest[] @relation("PaymentRequestWeekly")
-  allocations PaymentAllocation[] @relation("WeeklyAllocations")
+  allocations     PaymentAllocation[] @relation("WeeklyAllocations")
 
   @@unique([memberId, weekNumber, year])
   @@index([dueDate])
   @@index([status])
+  @@index([weeklyPeriodId])
 }
 
 model Payment {
@@ -712,5 +746,26 @@ model TransactionReversal {
   authorizedBy User @relation("AuthorizedReversals", fields: [authorizedById], references: [id])
 
   @@index([originalTxId])
+}
+
+model BulkImportJob {
+  id               String   @id @default(uuid())
+  importId         String   @unique
+  originalFilename String
+  fileType         String
+  totalRows        Int      @default(0)
+  successfulRows   Int      @default(0)
+  failedRows       Int      @default(0)
+  duplicateRows    Int      @default(0)
+  status           String   @default("COMPLETED") // PENDING, PROCESSING, COMPLETED, FAILED
+  resultSummary    Json?
+  importedById     String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  importedBy       User     @relation("BulkImports", fields: [importedById], references: [id])
+
+  @@index([status])
+  @@index([createdAt])
 }
 

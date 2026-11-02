@@ -1,12 +1,13 @@
 import type { ReactNode } from 'react';
 import * as React from 'react';
 import { useTranslation } from 'react-i18next';
+import CalendarSwitcher from './CalendarSwitcher';
 import {
   LayoutDashboard, Users, CreditCard, CalendarCheck, FileText,
   Bell, Settings, Database, Globe,
   ChevronRight, UserCircle, History,
   AlertCircle, Menu, X, Search, ChevronDown,
-  Home, ArrowRight,
+  Home, ArrowRight, CalendarDays, UploadCloud,
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { NavLink, useNavigate, Link } from 'react-router-dom';
@@ -17,6 +18,8 @@ interface LayoutProps { children: ReactNode; }
 const adminNav = [
   { to: '/dashboard', icon: LayoutDashboard, labelKey: 'nav.dashboard' },
   { to: '/members', icon: Users, labelKey: 'nav.members' },
+  { to: '/members/bulk-register', icon: UploadCloud, labelKey: 'Bulk Member Registration' },
+  { to: '/weekly-periods', icon: CalendarDays, labelKey: 'Weekly Period Management' },
   { to: '/records', icon: CreditCard, labelKey: 'Member Records' },
   { to: '/financial', icon: AlertCircle, labelKey: 'Penalties & Fines' },
   { to: '/attendance', icon: CalendarCheck, labelKey: 'nav.attendance' },
@@ -32,6 +35,7 @@ const adminNav = [
 const auditorNav = [
   { to: '/dashboard', icon: LayoutDashboard, labelKey: 'nav.dashboard' },
   { to: '/members', icon: Users, labelKey: 'nav.members' },
+  { to: '/weekly-periods', icon: CalendarDays, labelKey: 'Weekly Period Management' },
   { to: '/records', icon: CreditCard, labelKey: 'Member Records' },
   { to: '/financial', icon: AlertCircle, labelKey: 'Penalties & Fines' },
   { to: '/attendance', icon: CalendarCheck, labelKey: 'nav.attendance' },
@@ -224,7 +228,7 @@ export default function Layout({ children }: LayoutProps) {
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
               <input 
                 type="text"
-                placeholder="Search members, payments, or anything..."
+                placeholder={t('Search members, payments, or anything...', { defaultValue: 'Search members, payments, or anything...' })}
                 className="w-full pl-10 pr-4 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all"
               />
             </div>
@@ -236,11 +240,14 @@ export default function Layout({ children }: LayoutProps) {
             <button 
               onClick={() => navigate('/notifications')}
               className="relative z-20 p-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-all cursor-pointer"
-              title="Notifications"
+              title={t('Notifications', { defaultValue: 'Notifications' })}
             >
               <Bell size={20} />
               <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
             </button>
+
+            {/* Calendar Switcher (Ethiopian <-> Gregorian) */}
+            <CalendarSwitcher />
 
             {/* Language Toggle */}
             <button 
@@ -282,10 +289,10 @@ export default function Layout({ children }: LayoutProps) {
                 )}
                 <div className="hidden md:block text-left">
                   <p className="text-sm font-semibold text-gray-900">
-                    {user?.role === 'ADMIN' ? 'Admin' : user?.role === 'AUDITOR' ? 'Auditor' : (user?.member?.fullName || 'Member')}
+                    {user?.role === 'ADMIN' ? 'Admin' : user?.role === 'AUDITOR' ? t('Auditor', { defaultValue: 'Auditor' }) : (user?.member?.fullName || 'Member')}
                   </p>
                   <p className="text-xs text-gray-500">
-                    {user?.role === 'ADMIN' ? 'System Administrator' : user?.role === 'AUDITOR' ? 'Auditor' : 'Gamtaa Member'}
+                    {user?.role === 'ADMIN' ? t('System Administrator', { defaultValue: 'System Administrator' }) : user?.role === 'AUDITOR' ? t('Auditor', { defaultValue: 'Auditor' }) : t('Gamtaa Member', { defaultValue: 'Gamtaa Member' })}
                   </p>
                 </div>
                 <ChevronDown size={16} className="text-gray-400 hidden md:inline" />

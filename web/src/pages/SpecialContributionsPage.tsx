@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Plus, Pencil, Trash2, Eye, XCircle, CheckCircle } from 'lucide-react';
 import { api } from '../lib/api';
-import { PageHeader, Badge, LoadingSpinner, Modal, inputClass, btnPrimary, btnSecondary, Select, DateInput } from '../components/ui';
+import { PageHeader, Badge, LoadingSpinner, Modal, inputClass, btnPrimary, btnSecondary, Select } from '../components/ui';
 import { useAuth } from '../contexts/AuthContext';
+import { useCalendar } from '../contexts/CalendarContext';
+import EthiopianDatePicker from '../components/EthiopianDatePicker';
 
 interface Member { id: string; fullName: string; memberId: string; status: string; }
 interface Obligation { id: string; amount: number; amountPaid: number; status: string; isExempt: boolean; member: { fullName: string; memberId: string }; }
@@ -25,6 +27,7 @@ const TYPE_COLORS: Record<string, { bg: string; text: string; border: string }> 
 export default function SpecialContributionsPage() {
   const { t } = useTranslation();
   const { user } = useAuth();
+  const { formatDate } = useCalendar();
   const isAdmin = user?.role === 'ADMIN';
 
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
@@ -220,7 +223,7 @@ export default function SpecialContributionsPage() {
                         <span><strong className="text-slate-700">{Number(c.amount).toLocaleString()} ETB</strong> per member</span>
                         {c.beneficiaryMember && <span>Beneficiary: <strong>{c.beneficiaryMember.fullName}</strong></span>}
                         {c.familyRelationship && <span>({c.familyRelationship})</span>}
-                        {c.dueDate && <span>Due: {new Date(c.dueDate).toLocaleDateString()}</span>}
+                        {c.dueDate && <span>Due: {formatDate(c.dueDate, { includeDual: true })}</span>}
                         {c._count && <span>{c._count.obligations} members</span>}
                       </div>
                     </div>
@@ -286,8 +289,8 @@ export default function SpecialContributionsPage() {
                 <input className={inputClass} type="number" placeholder="e.g. 100" value={form.amount || ''} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Due Date *</label>
-                <DateInput value={form.dueDate || ''} onChange={val => setForm({ ...form, dueDate: val })} />
+                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Due Date (Ethiopian) *</label>
+                <EthiopianDatePicker value={form.dueDate || ''} onChange={val => setForm({ ...form, dueDate: val })} />
               </div>
               <div>
                 <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Description</label>
@@ -324,8 +327,8 @@ export default function SpecialContributionsPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Due Date (Optional)</label>
-                <DateInput value={form.dueDate || ''} onChange={val => setForm({ ...form, dueDate: val })} />
+                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Due Date (Ethiopian - Optional)</label>
+                <EthiopianDatePicker value={form.dueDate || ''} onChange={val => setForm({ ...form, dueDate: val })} />
               </div>
             </>
           )}
@@ -354,8 +357,8 @@ export default function SpecialContributionsPage() {
               <input className={inputClass} type="number" value={editForm.amount || ''} onChange={(e) => setEditForm({ ...editForm, amount: e.target.value })} />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Due Date</label>
-              <DateInput value={editForm.dueDate || ''} onChange={val => setEditForm({ ...editForm, dueDate: val })} />
+              <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Due Date (Ethiopian)</label>
+              <EthiopianDatePicker value={editForm.dueDate || ''} onChange={val => setEditForm({ ...editForm, dueDate: val })} />
             </div>
             <div>
               <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Description</label>

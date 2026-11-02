@@ -53,16 +53,16 @@ export default function NotificationsPage() {
     load();
   };
 
-  const deleteNotification = async (id: string) => {
-    const confirmed = confirm('Are you sure you want to delete this notification? This action cannot be undone.');
-    if (!confirmed) return;
+  const [deletingNotificationId, setDeletingNotificationId] = useState<string | null>(null);
 
+  const confirmDeleteNotification = async () => {
+    if (!deletingNotificationId) return;
     try {
-      await api.delete(`/settings/notifications/${id}`);
+      await api.delete(`/settings/notifications/${deletingNotificationId}`);
+      setDeletingNotificationId(null);
       load();
-      alert('Notification deleted successfully');
     } catch (error) {
-      alert('Failed to delete notification');
+      console.error('Failed to delete notification:', error);
     }
   };
 
@@ -111,7 +111,7 @@ export default function NotificationsPage() {
                       <Pencil size={14} />
                     </button>
                   )}
-                  <button className="text-slate-400 hover:text-red-600 transition-colors" onClick={() => deleteNotification(n.id)} title="Delete">
+                  <button className="text-slate-400 hover:text-red-600 transition-colors" onClick={() => setDeletingNotificationId(n.id)} title="Delete">
                     <Trash2 size={14} />
                   </button>
                 </div>
@@ -135,6 +135,25 @@ export default function NotificationsPage() {
             <div className="flex justify-end gap-2 pt-2">
               <button className={btnSecondary} onClick={() => setEditingNotification(null)}>Cancel</button>
               <button className={btnPrimary} onClick={saveEdit}>Save Changes</button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {deletingNotificationId && (
+        <Modal open={!!deletingNotificationId} onClose={() => setDeletingNotificationId(null)} title="Confirm Deletion">
+          <div className="space-y-4">
+            <p className="text-sm text-slate-600 dark:text-slate-300">
+              Are you sure you want to delete this notification? This action cannot be undone.
+            </p>
+            <div className="flex justify-end gap-2 pt-2">
+              <button className={btnSecondary} onClick={() => setDeletingNotificationId(null)}>Cancel</button>
+              <button
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors"
+                onClick={confirmDeleteNotification}
+              >
+                Delete Notification
+              </button>
             </div>
           </div>
         </Modal>
