@@ -10,6 +10,8 @@ interface TeamMember {
   nameOm?: string;
   role: string;
   roleOm?: string;
+  description?: string;
+  descriptionOm?: string;
   image?: string;
   position: number;
   type: 'member' | 'leader';
@@ -27,6 +29,8 @@ export default function TeamManagementPage() {
   const [newRole, setNewRole] = useState('');
   const [newNameOm, setNewNameOm] = useState('');
   const [newRoleOm, setNewRoleOm] = useState('');
+  const [newDescription, setNewDescription] = useState('');
+  const [newDescriptionOm, setNewDescriptionOm] = useState('');
   const [_newImage, setNewImage] = useState<File | null>(null); // newImage assignment may not be used everywhere
   const [newImagePreview, setNewImagePreview] = useState('');
   
@@ -36,6 +40,8 @@ export default function TeamManagementPage() {
   const [editRole, setEditRole] = useState('');
   const [editNameOm, setEditNameOm] = useState('');
   const [editRoleOm, setEditRoleOm] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editDescriptionOm, setEditDescriptionOm] = useState('');
   const [_editImage, setEditImage] = useState<File | null>(null); // editImage assignment may not be used everywhere
   const [editImagePreview, setEditImagePreview] = useState('');
   
@@ -96,6 +102,8 @@ export default function TeamManagementPage() {
         nameOm: newNameOm,
         role: newRole,
         roleOm: newRoleOm,
+        description: newDescription.trim() || undefined,
+        descriptionOm: newDescriptionOm.trim() || undefined,
         image: newImagePreview,
         position: items.length,
         type: activeTab === 'members' ? 'member' : 'leader',
@@ -117,6 +125,8 @@ export default function TeamManagementPage() {
       setNewRole('');
       setNewNameOm('');
       setNewRoleOm('');
+      setNewDescription('');
+      setNewDescriptionOm('');
       setNewImage(null);
       setNewImagePreview('');
       setModalType('success');
@@ -137,6 +147,8 @@ export default function TeamManagementPage() {
     setEditRole(item.role);
     setEditNameOm(item.nameOm || '');
     setEditRoleOm(item.roleOm || '');
+    setEditDescription(item.description || '');
+    setEditDescriptionOm(item.descriptionOm || '');
     setEditImagePreview(item.image || '');
   };
 
@@ -146,6 +158,8 @@ export default function TeamManagementPage() {
     setEditRole('');
     setEditNameOm('');
     setEditRoleOm('');
+    setEditDescription('');
+    setEditDescriptionOm('');
     setEditImage(null);
     setEditImagePreview('');
   };
@@ -168,6 +182,8 @@ export default function TeamManagementPage() {
               nameOm: editNameOm,
               role: editRole,
               roleOm: editRoleOm,
+              description: editDescription.trim() || undefined,
+              descriptionOm: editDescriptionOm.trim() || undefined,
               image: editImagePreview,
             }
           : m
@@ -180,6 +196,8 @@ export default function TeamManagementPage() {
               nameOm: editNameOm,
               role: editRole,
               roleOm: editRoleOm,
+              description: editDescription.trim() || undefined,
+              descriptionOm: editDescriptionOm.trim() || undefined,
               image: editImagePreview,
             }
           : l
@@ -302,13 +320,13 @@ export default function TeamManagementPage() {
                 </label>
                 {newImagePreview && (
                   <div className="relative">
-                    <img src={newImagePreview} alt="Preview" className="h-24 w-24 object-cover rounded-lg" />
+                    <img src={newImagePreview} alt="Preview" className="h-24 w-24 object-cover rounded-full aspect-square border-2 border-emerald-500 shadow-sm" />
                     <button
                       onClick={() => {
                         setNewImage(null);
                         setNewImagePreview('');
                       }}
-                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"
+                      className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-md"
                     >
                       <X size={16} />
                     </button>
@@ -366,6 +384,30 @@ export default function TeamManagementPage() {
                   placeholder="Enter Oromiffa role"
                 />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Description / Bio (English)
+                </label>
+                <input
+                  type="text"
+                  className={inputClass}
+                  value={newDescription}
+                  onChange={(e) => setNewDescription(e.target.value)}
+                  placeholder="Optional short description"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Description / Bio (Oromiffa)
+                </label>
+                <input
+                  type="text"
+                  className={inputClass}
+                  value={newDescriptionOm}
+                  onChange={(e) => setNewDescriptionOm(e.target.value)}
+                  placeholder="Optional description in Oromiffa"
+                />
+              </div>
             </div>
             <button
               onClick={addTeamMember}
@@ -405,13 +447,13 @@ export default function TeamManagementPage() {
                           </label>
                           {editImagePreview && (
                             <div className="relative">
-                              <img src={editImagePreview} alt="Preview" className="h-20 w-20 object-cover rounded-lg" />
+                              <img src={editImagePreview} alt="Preview" className="h-20 w-20 object-cover rounded-full aspect-square border-2 border-blue-500 shadow-sm" />
                               <button
                                 onClick={() => {
                                   setEditImage(null);
                                   setEditImagePreview('');
                                 }}
-                                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1"
+                                className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 shadow-md"
                               >
                                 <X size={14} />
                               </button>
@@ -457,6 +499,26 @@ export default function TeamManagementPage() {
                             onChange={(e) => setEditRoleOm(e.target.value)}
                           />
                         </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">Description (English)</label>
+                          <input
+                            type="text"
+                            className={inputClass}
+                            value={editDescription}
+                            onChange={(e) => setEditDescription(e.target.value)}
+                            placeholder="Optional short description"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 mb-1">Description (Oromiffa)</label>
+                          <input
+                            type="text"
+                            className={inputClass}
+                            value={editDescriptionOm}
+                            onChange={(e) => setEditDescriptionOm(e.target.value)}
+                            placeholder="Optional description in Oromiffa"
+                          />
+                        </div>
                       </div>
                       <div className="flex gap-2">
                         <button
@@ -477,14 +539,25 @@ export default function TeamManagementPage() {
                   ) : (
                     // View Mode
                     <div className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-all gap-4">
-                      {item.image && (
-                        <img src={item.image} alt={item.name} className="h-16 w-16 object-cover rounded-lg" />
-                      )}
+                      <div className="h-14 w-14 rounded-full overflow-hidden flex-shrink-0 border-2 border-emerald-500/50">
+                        {item.image ? (
+                          <img src={item.image} alt={item.name} className="h-full w-full object-cover object-center rounded-full" />
+                        ) : (
+                          <div className="h-full w-full rounded-full bg-slate-100 text-slate-700 flex items-center justify-center font-bold text-sm">
+                            {item.name ? item.name.slice(0, 2).toUpperCase() : 'M'}
+                          </div>
+                        )}
+                      </div>
                       <div className="flex-1">
                         <h4 className="font-semibold text-gray-800">{item.name}</h4>
                         {item.nameOm && <p className="text-sm text-gray-600">{item.nameOm}</p>}
-                        <p className="text-sm text-gray-600">{item.role}</p>
+                        <p className="text-sm text-emerald-600 font-medium">{item.role}</p>
                         {item.roleOm && <p className="text-sm text-gray-500">{item.roleOm}</p>}
+                        {(item.description || item.descriptionOm) && (
+                          <p className="text-xs text-gray-500 mt-1 line-clamp-2">
+                            {item.description || item.descriptionOm}
+                          </p>
+                        )}
                       </div>
                       <div className="flex gap-2">
                         <button

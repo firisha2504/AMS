@@ -21,6 +21,8 @@ interface TeamMember {
   nameOm?: string;
   role: string;
   roleOm?: string;
+  description?: string;
+  descriptionOm?: string;
   image?: string;
   position: number;
   type: 'member' | 'leader';
@@ -34,21 +36,52 @@ export default function PublicHomePage() {
   const isOm = i18n.language === 'om';
 
   const resolveImageUrl = (img?: string) => {
-    if (!img) return '';
+    if (!img || !img.trim()) return '';
     if (img.startsWith('data:') || img.startsWith('http://') || img.startsWith('https://')) {
       return img;
     }
     const API_URL = import.meta.env.VITE_API_URL || '/api';
-    const BASE = API_URL.replace('/api', '');
-    return `${BASE}${img.startsWith('/') ? '' : '/'}${img}`;
+    const BASE = API_URL.replace(/\/api\/?$/, '');
+    const cleanImg = img.startsWith('/') ? img : `/${img}`;
+    return `${BASE}${cleanImg}`;
   };
 
   useEffect(() => {
     Promise.all([
-      api.get('/public/home').then((res: { data: { data: HomeData } }) => setData(res.data.data)).catch(() => setData(null)),
-      api.get('/team').then((res: { data: { data: TeamMember[] } }) => setTeamMembers(res.data.data || [])).catch(() => setTeamMembers([])),
+      api
+        .get('/public/home')
+        .then((res: { data: { data: HomeData } }) => setData(res.data.data))
+        .catch(() => setData(null)),
+      api
+        .get('/team')
+        .then((res: { data: { data?: TeamMember[] } | TeamMember[] }) => {
+          const raw = res.data;
+          const list = Array.isArray(raw)
+            ? raw
+            : Array.isArray(raw?.data)
+            ? raw.data
+            : [];
+          setTeamMembers(list);
+        })
+        .catch(() => setTeamMembers([])),
     ]).finally(() => setLoading(false));
   }, []);
+
+  const sortedMembers = [...teamMembers].sort((a, b) => {
+    if (a.type === 'leader' && b.type !== 'leader') return -1;
+    if (a.type !== 'leader' && b.type === 'leader') return 1;
+    return (a.position ?? 0) - (b.position ?? 0);
+  });
+
+  const getLayoutClass = (count: number) => {
+    if (count <= 2) {
+      return 'flex flex-wrap justify-center items-stretch gap-6 sm:gap-8';
+    }
+    if (count === 3) {
+      return 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8 justify-items-center max-w-5xl mx-auto';
+    }
+    return 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 sm:gap-8 justify-items-center max-w-7xl mx-auto';
+  };
 
   return (
     <PublicLayout>
@@ -299,90 +332,142 @@ export default function PublicHomePage() {
       </section>
 
       {/* ── ORGANIZATION LEADERS & COMMITTEE MEMBERS SECTION ── */}
-      {teamMembers.length > 0 && (
-        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20 border-t border-white/10">
-          <div className="text-center space-y-3 mb-12">
-            <span className="text-xs font-bold uppercase tracking-wider text-emerald-400 bg-emerald-500/15 px-3.5 py-1.5 rounded-full border border-emerald-500/30 inline-flex items-center gap-1.5">
-              <Crown size={14} className="text-amber-400" />
-              {isOm ? 'Gaggeessitoota fi Koree Gamtaa' : 'Leadership & Executive Committee'}
-            </span>
-            <h2 className="text-2xl sm:text-3xl font-black text-white">
-              {isOm ? 'Hoggantoota fi Miseensota Koree' : 'Organization Leaders & Key Members'}
-            </h2>
-            <p className="text-sm text-blue-200/80 max-w-xl mx-auto">
-              {isOm
-                ? 'Gaggeessitoota gamtaa dargaggoota Melka Jabdu Qaxaa Araati'
-                : 'Dedicated leaders and committee representatives serving the Melka Jabdu Youth Association'}
-            </p>
-          </div>
+      {sortedMembers.length > 0 && (
+        <section
+          id="leadership"
+          className="relative w-full py-16 sm:py-20 md:py-24 border-t border-white/10 overflow-hidden"
+          style={{ backgroundColor: '#101D45' }}
+        >
+          {/* Subtle Ambient Background Lighting */}
+          <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-96 sm:w-[600px] h-96 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
+          <div className="absolute bottom-0 right-10 w-72 h-72 bg-blue-500/5 rounded-full blur-3xl pointer-events-none" />
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-            {teamMembers.map((member) => {
-              const displayName = isOm && member.nameOm ? member.nameOm : member.name;
-              const displayRole = isOm && member.roleOm ? member.roleOm : member.role;
-              const imgUrl = resolveImageUrl(member.image);
-              const isLeader = member.type === 'leader';
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+            {/* Section Header */}
+            <div className="text-center space-y-3 mb-12 sm:mb-16">
+              <span className="text-xs font-bold uppercase tracking-wider text-emerald-400 bg-emerald-500/15 px-3.5 py-1.5 rounded-full border border-emerald-500/30 inline-flex items-center gap-1.5 shadow-sm">
+                <Crown size={14} className="text-amber-400" />
+                {isOm ? 'Gaggeessitoota fi Koree Gamtaa' : 'Leadership & Executive Committee'}
+              </span>
+              <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-white tracking-tight">
+                {isOm ? 'Hoggantoota fi Miseensota Koree' : 'Organization Leaders & Key Members'}
+              </h2>
+              <p className="text-sm sm:text-base text-blue-200/80 max-w-xl mx-auto leading-relaxed">
+                {isOm
+                  ? 'Gaggeessitoota gamtaa dargaggoota Melka Jabdu fi bakka buutota koree tajaajilan'
+                  : 'Dedicated leaders and committee representatives serving the Melka Jabdu Youth Association'}
+              </p>
+            </div>
 
-              return (
-                <div
-                  key={member.id}
-                  className={`relative rounded-2xl overflow-hidden shadow-lg border transition-all duration-300 hover:-translate-y-1 ${
-                    isLeader
-                      ? 'bg-gradient-to-b from-[#0f2347] to-[#0a1931] border-amber-500/40 shadow-amber-900/10'
-                      : 'bg-white/5 backdrop-blur-sm border-white/10 hover:border-white/25'
-                  }`}
-                >
-                  {/* Photo with aspect-ratio preservation and object-fit cover */}
-                  <div className="w-full aspect-[4/5] bg-slate-800/80 relative overflow-hidden flex items-center justify-center">
-                    {imgUrl ? (
-                      <img
-                        src={imgUrl}
-                        alt={displayName}
-                        className="w-full h-full object-cover object-top transition-transform duration-500 hover:scale-105"
-                        onError={(e) => {
-                          (e.target as HTMLImageElement).style.display = 'none';
-                          const fallback = (e.target as HTMLElement).nextElementSibling;
-                          if (fallback) fallback.classList.remove('hidden');
-                        }}
-                      />
-                    ) : null}
+            {/* Profile Cards Container */}
+            <div className={`w-full ${getLayoutClass(sortedMembers.length)}`}>
+              {sortedMembers.map((member) => {
+                const displayName = (isOm && member.nameOm ? member.nameOm : member.name) || (isOm ? 'Miseensa' : 'Member');
+                const displayRole = (isOm && member.roleOm ? member.roleOm : member.role) || (isOm ? 'Koree Gamtaa' : 'Committee Member');
+                const displayDescription = isOm && member.descriptionOm ? member.descriptionOm : member.description;
+                const imgUrl = resolveImageUrl(member.image);
+                const isLeader = member.type === 'leader';
 
-                    {/* Fallback avatar if no image or image error */}
-                    <div className={`w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-slate-800 to-slate-900 ${imgUrl ? 'hidden' : ''}`}>
-                      <div className="w-20 h-20 rounded-full bg-emerald-500/20 border-2 border-emerald-400/40 flex items-center justify-center text-emerald-300 font-bold text-2xl shadow-inner">
-                        {displayName ? displayName.charAt(0).toUpperCase() : 'A'}
+                return (
+                  <div
+                    key={member.id}
+                    className={`group relative flex flex-col items-center text-center p-6 sm:p-7 rounded-2xl sm:rounded-3xl transition-all duration-300 hover:-translate-y-1.5 hover:shadow-2xl ${
+                      isLeader
+                        ? 'bg-gradient-to-b from-[#13234d] to-[#0d1838] border border-amber-500/40 shadow-lg shadow-amber-950/20 hover:border-amber-400/80 hover:shadow-amber-900/30'
+                        : 'bg-gradient-to-b from-[#112046] to-[#0c1633] border border-white/10 shadow-lg shadow-black/20 hover:border-[#159957]/70 hover:shadow-emerald-950/30'
+                    } w-full max-w-[280px] sm:max-w-[300px]`}
+                  >
+                    {/* Circular Profile Photo Container */}
+                    <div className="relative mx-auto mb-4 sm:mb-5 w-[120px] h-[120px] sm:w-[150px] sm:h-[150px] flex-shrink-0">
+                      <div
+                        className={`w-full h-full rounded-full overflow-hidden p-1 transition-all duration-300 ${
+                          isLeader
+                            ? 'ring-2 ring-amber-400/70 ring-offset-2 ring-offset-[#101D45] group-hover:ring-amber-300 group-hover:ring-offset-4 group-hover:shadow-lg group-hover:shadow-amber-500/25'
+                            : 'ring-2 ring-[#159957] ring-offset-2 ring-offset-[#101D45] group-hover:ring-emerald-400 group-hover:ring-offset-4 group-hover:shadow-lg group-hover:shadow-emerald-500/25'
+                        }`}
+                        style={{ borderRadius: '50%', aspectRatio: '1 / 1' }}
+                      >
+                        {imgUrl ? (
+                          <img
+                            src={imgUrl}
+                            alt={displayName}
+                            className="w-full h-full rounded-full object-cover object-center transition-transform duration-500 group-hover:scale-105"
+                            style={{
+                              borderRadius: '50%',
+                              aspectRatio: '1 / 1',
+                              objectFit: 'cover',
+                              objectPosition: 'center',
+                              width: '100%',
+                              height: '100%',
+                            }}
+                            onError={(e) => {
+                              (e.target as HTMLImageElement).style.display = 'none';
+                              const fallback = (e.target as HTMLElement).nextElementSibling;
+                              if (fallback) fallback.classList.remove('hidden');
+                            }}
+                          />
+                        ) : null}
+
+                        {/* Fallback circular avatar if no image or image error */}
+                        <div
+                          className={`w-full h-full rounded-full flex flex-col items-center justify-center select-none ${
+                            isLeader
+                              ? 'bg-gradient-to-br from-amber-900/60 via-slate-800 to-[#101D45] text-amber-300'
+                              : 'bg-gradient-to-br from-emerald-950/60 via-slate-800 to-[#101D45] text-emerald-300'
+                          } ${imgUrl ? 'hidden' : ''}`}
+                          style={{ borderRadius: '50%', aspectRatio: '1 / 1' }}
+                        >
+                          <span className="font-extrabold text-2xl sm:text-3xl tracking-wider">
+                            {displayName
+                              ? displayName
+                                  .trim()
+                                  .split(/\s+/)
+                                  .map((n) => n[0])
+                                  .filter(Boolean)
+                                  .slice(0, 2)
+                                  .join('')
+                                  .toUpperCase()
+                              : 'A'}
+                          </span>
+                        </div>
                       </div>
-                      <span className="text-[11px] text-slate-400 mt-2 font-medium">Melka Jabdu Afosha</span>
                     </div>
 
-                    {/* Role badge top right */}
-                    <div className="absolute top-3 right-3">
+                    {/* Small Elegant Role Badge */}
+                    <div className="mb-2.5">
                       {isLeader ? (
-                        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-500 text-slate-950 flex items-center gap-1 shadow-md">
-                          <Crown size={12} />
-                          {isOm ? 'Gaggeessaa' : 'Leader'}
+                        <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[11px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm">
+                          <Crown size={12} className="text-amber-400" />
+                          <span>{isOm ? 'Gaggeessaa' : 'Organization Leader'}</span>
                         </span>
                       ) : (
-                        <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-600/90 text-white flex items-center gap-1 shadow-md">
-                          <UserCheck size={12} />
-                          {isOm ? 'Miseensa Koree' : 'Committee'}
+                        <span className="inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 shadow-sm">
+                          <UserCheck size={12} className="text-emerald-400" />
+                          <span>{isOm ? 'Miseensa Koree' : 'Committee Member'}</span>
                         </span>
                       )}
                     </div>
-                  </div>
 
-                  {/* Member info */}
-                  <div className="p-4 text-center space-y-1">
-                    <h3 className="font-bold text-white text-base leading-snug">
+                    {/* Member's Full Name */}
+                    <h3 className="font-bold text-white text-base sm:text-lg leading-snug tracking-tight group-hover:text-emerald-200 transition-colors">
                       {displayName}
                     </h3>
-                    <p className={`text-xs font-medium ${isLeader ? 'text-amber-400' : 'text-emerald-400'}`}>
+
+                    {/* Position or Committee Role */}
+                    <p className={`text-xs sm:text-sm font-semibold mt-1 ${isLeader ? 'text-amber-400' : 'text-[#159957]'}`}>
                       {displayRole}
                     </p>
+
+                    {/* Optional Short Description */}
+                    {displayDescription ? (
+                      <p className="text-xs text-blue-200/80 leading-relaxed mt-2.5 line-clamp-3">
+                        {displayDescription}
+                      </p>
+                    ) : null}
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         </section>
       )}
