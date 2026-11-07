@@ -169,6 +169,19 @@ export interface OrganizationFinancialSummary {
   paidMembersCount: number;
   unpaidMembersCount: number;
   pendingPaymentRequestsCount: number;
+
+  // Current Ethiopian week participation
+  thisWeekPaidCount: number;
+  thisWeekTotalMembers: number;
+  thisWeekPaidRate: number;
+  currentWeeklyPeriod?: any;
+
+  // Unpaid obligations count across all categories
+  unpaidObligationsCount: number;
+
+  // Compatibility aliases
+  totalIncome: number;
+  paidPenalties: number;
 }
 
 /**
@@ -746,12 +759,24 @@ export async function getOrganizationFinancialSummary(): Promise<OrganizationFin
     }),
     // All weekly obligations
     prisma.weeklyObligation.findMany({
-      select: { contributionAmount: true, amountPaid: true, status: true, dueDate: true },
+      select: {
+        id: true,
+        memberId: true,
+        contributionAmount: true,
+        amountPaid: true,
+        status: true,
+        dueDate: true,
+        weeklyPeriodId: true,
+        weekNumber: true,
+        year: true,
+      },
     }),
     // All special/emergency obligations
     prisma.specialContributionObligation.findMany({
       where: { isExempt: false },
       select: {
+        id: true,
+        memberId: true,
         amount: true,
         amountPaid: true,
         status: true,
@@ -760,11 +785,27 @@ export async function getOrganizationFinancialSummary(): Promise<OrganizationFin
     }),
     // All penalties
     prisma.penalty.findMany({
-      select: { amount: true, amountPaid: true, status: true, isMonthly: true, weekNumber: true, dueDate: true },
+      select: {
+        id: true,
+        memberId: true,
+        amount: true,
+        amountPaid: true,
+        status: true,
+        isMonthly: true,
+        weekNumber: true,
+        dueDate: true,
+      },
     }),
     // All historical joining obligations
     prisma.joiningObligation.findMany({
-      select: { totalBackContributionAmount: true, amountPaid: true, status: true, dueDate: true },
+      select: {
+        id: true,
+        memberId: true,
+        totalBackContributionAmount: true,
+        amountPaid: true,
+        status: true,
+        dueDate: true,
+      },
     }),
     // Verified payment allocations
     prisma.paymentAllocation.groupBy({
@@ -788,6 +829,9 @@ export async function getOrganizationFinancialSummary(): Promise<OrganizationFin
   let weeklyPartialCount = 0;
   let weeklyOverdueCount = 0;
 
+  const memberReceivablesMap = new Map<string, number>();
+  const membersWithUnpaid = new Set<string>();
+
   for (const o of allWeekly) {
     const orig = Number(o.contributionAmount);
     const paid = Number(o.amountPaid);
@@ -799,9 +843,13 @@ export async function getOrganizationFinancialSummary(): Promise<OrganizationFin
     } else if (paid > 0) {
       weeklyPartialCount++;
       weeklyReceivable += rem;
+      memberReceivablesMap.set(o.memberId, (memberReceivablesMap.get(o.memberId) || 0) + rem);
+      membersWithUnpaid.add(o.memberId);
     } else {
       weeklyUnpaidCount++;
       weeklyReceivable += rem;
+      memberReceivablesMap.set(o.memberId, (memberReceivablesMap.get(o.memberId) || 0) + rem);
+      membersWithUnpaid.add(o.memberId);
     }
     if (rem > 0 && o.dueDate && new Date(o.dueDate) < now) {
       weeklyOverdueCount++;
@@ -890,6 +938,11 @@ export async function getOrganizationFinancialSummary(): Promise<OrganizationFin
       }
       if (isOverdue) otherPenOverdueCount++;
     }
+
+    if (rem > 0 && !isWaived) {
+      memberReceivablesMap.set(p.memberId, (memberReceivablesMap.get(p.memberId) || 0) + rem);
+      membersWithUnpaid.add(p.memberId);
+    }
   }
 
   // 3. Special & Emergency breakdown
@@ -943,6 +996,11 @@ export async function getOrganizationFinancialSummary(): Promise<OrganizationFin
       }
       if (isOverdue) specialOverdueCount++;
     }
+
+    if (rem > 0 && !isPaid) {
+      memberReceivablesMap.set(s.memberId, (memberReceivablesMap.get(s.memberId) || 0) + rem);
+      membersWithUnpaid.add(s.memberId);
+    }
   }
 
   // 4. Historical Joining breakdown
@@ -977,6 +1035,11 @@ export async function getOrganizationFinancialSummary(): Promise<OrganizationFin
       histReceivable += rem;
     }
     if (isOverdue) histOverdueCount++;
+
+    if (rem > 0 && !isWaived && !isPaid) {
+      memberReceivablesMap.set(j.memberId, (memberReceivablesMap.get(j.memberId) || 0) + rem);
+      membersWithUnpaid.add(j.memberId);
+    }
   }
 
   const penaltiesReceivable = weeklyPenReceivable + monthlyPenReceivable + otherPenReceivable;
@@ -1093,16 +1156,128 @@ export async function getOrganizationFinancialSummary(): Promise<OrganizationFin
     },
   };
 
-  // Paid and unpaid members count (active members)
+  // 5. Total unpaid obligations count across all categories
+  const unpaidObligationsCount =
+    weeklyUnpaidCount +
+    weeklyPartialCount +
+    weeklyPenUnpaidCount +
+    weeklyPenPartialCount +
+    monthlyPenUnpaidCount +
+    monthlyPenPartialCount +
+    otherPenUnpaidCount +
+    otherPenPartialCount +
+    specialUnpaidCount +
+    specialPartialCount +
+    emergencyUnpaidCount +
+    emergencyPartialCount +
+    histUnpaidCount +
+    histPartialCount;
+
+  // 6. Paid and unpaid members count (active approved members) based on actual receivables
   const activeMembersWithBalance = await prisma.member.findMany({
     where: { status: 'APPROVED' },
-    select: { outstandingBalance: true },
+    select: { id: true, outstandingBalance: true },
   });
-  const paidMembersCount = activeMembersWithBalance.filter((m) => Number(m.outstandingBalance) <= 0).length;
-  const unpaidMembersCount = activeMembersWithBalance.filter((m) => Number(m.outstandingBalance) > 0).length;
+
+  let activeUnpaidCount = 0;
+  for (const m of activeMembersWithBalance) {
+    const actualBal = memberReceivablesMap.get(m.id) || 0;
+    if (actualBal > 0 || membersWithUnpaid.has(m.id)) {
+      activeUnpaidCount++;
+    }
+    // Synchronize Member.outstandingBalance column in DB if out of sync
+    if (Number(m.outstandingBalance) !== actualBal) {
+      await prisma.member.update({
+        where: { id: m.id },
+        data: { outstandingBalance: actualBal },
+      }).catch((e) => console.error('Failed to sync member outstanding balance:', e));
+    }
+  }
+  const unpaidMembersCount = activeUnpaidCount;
+  const paidMembersCount = Math.max(0, activeMembers - unpaidMembersCount);
+
+  // 7. Ethiopian calendar current week payment status
+  let currentWeeklyPeriod = await prisma.weeklyPeriod.findFirst({
+    where: {
+      startDate: { lte: now },
+      endDate: { gte: now },
+    },
+  });
+
+  if (!currentWeeklyPeriod) {
+    currentWeeklyPeriod =
+      (await prisma.weeklyPeriod.findFirst({
+        where: { dueDate: { gte: now } },
+        orderBy: { dueDate: 'asc' },
+      })) ||
+      (await prisma.weeklyPeriod.findFirst({
+        orderBy: { dueDate: 'desc' },
+      }));
+  }
+
+  let thisWeekPaidCount = 0;
+  const thisWeekTotalMembers = activeMembers;
+
+  if (currentWeeklyPeriod) {
+    const currentPeriodObligations = await prisma.weeklyObligation.findMany({
+      where: {
+        OR: [
+          { weeklyPeriodId: currentWeeklyPeriod.id },
+          {
+            weekNumber: currentWeeklyPeriod.weekNumber,
+            year: currentWeeklyPeriod.dueDate.getUTCFullYear(),
+          },
+        ],
+        member: { status: 'APPROVED' },
+      },
+      select: {
+        id: true,
+        memberId: true,
+        contributionAmount: true,
+        amountPaid: true,
+        status: true,
+        payments: {
+          where: { status: 'VERIFIED' },
+          select: { id: true, amount: true },
+        },
+        allocations: {
+          where: {
+            allocationType: 'WEEKLY',
+            payment: { status: 'VERIFIED' },
+          },
+          select: { id: true, amount: true },
+        },
+      },
+    });
+
+    const paidMemberIds = new Set<string>();
+    for (const ob of currentPeriodObligations) {
+      const verifiedPaymentSum = ob.payments.reduce((sum, p) => sum + Number(p.amount || 0), 0);
+      const verifiedAllocSum = ob.allocations.reduce((sum, a) => sum + Number(a.amount || 0), 0);
+      const totalVerified = Math.max(verifiedPaymentSum, verifiedAllocSum);
+      const required = Number(ob.contributionAmount || 0);
+
+      // ONLY successfully confirmed weekly contribution payments count.
+      // Pending, rejected, and unverified payments never count.
+      if (
+        (totalVerified >= required && required > 0) ||
+        (ob.status === 'PAID' && (ob.payments.length > 0 || ob.allocations.length > 0))
+      ) {
+        paidMemberIds.add(ob.memberId);
+      }
+    }
+    thisWeekPaidCount = paidMemberIds.size;
+  }
+
+  const thisWeekPaidRate =
+    thisWeekTotalMembers > 0
+      ? Math.round((thisWeekPaidCount / thisWeekTotalMembers) * 100)
+      : 0;
 
   return {
     totalConfirmedIncome,
+    totalIncome: totalConfirmedIncome,
+    paidPenalties: weeklyPenPaid + monthlyPenPaid + otherPenPaid,
     totalExpenses,
     availableActualFunds,
     totalOutstandingReceivables,
@@ -1126,5 +1301,10 @@ export async function getOrganizationFinancialSummary(): Promise<OrganizationFin
     paidMembersCount,
     unpaidMembersCount,
     pendingPaymentRequestsCount,
+    thisWeekPaidCount,
+    thisWeekTotalMembers,
+    thisWeekPaidRate,
+    currentWeeklyPeriod,
+    unpaidObligationsCount,
   };
 }

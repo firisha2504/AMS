@@ -24,10 +24,19 @@ interface AdminDashboard {
   totalMembers: number;
   activeMembers: number;
   pendingMembers: number;
+  paidMembersCount?: number;
+  unpaidMembersCount?: number;
   weeklyContributions: number;
   unpaidPenalties: number;
   paidPenalties: number;
   totalOutstandingBalance: number;
+  totalOutstandingReceivables?: number;
+  totalConfirmedIncome?: number;
+  totalIncome?: number;
+  thisWeekPaidCount?: number;
+  thisWeekTotalMembers?: number;
+  thisWeekPaidRate?: number;
+  unpaidObligationsCount?: number;
   totalSpecialContributions?: number;
   categoryMetrics?: Record<string, CategoryMetric>;
 }
@@ -798,20 +807,47 @@ export default function DashboardPage() {
     totalOutstandingBalance: 0,
   };
 
-  const totalIncome = Number(adm.weeklyContributions) + Number(adm.paidPenalties);
-  const paidRate = adm.totalMembers > 0 ? Math.round((adm.activeMembers / adm.totalMembers) * 100) : 0;
+  // 1. Total Income: verified cash ledger, strictly validated, never NaN
+  const rawTotalIncome = Number(
+    adm.totalConfirmedIncome ??
+    adm.totalIncome ??
+    (Number(adm.weeklyContributions || 0) + Number(adm.paidPenalties || 0))
+  );
+  const totalIncome = isNaN(rawTotalIncome) ? 0 : Math.max(0, rawTotalIncome);
+
+  // 2. This Week Paid: only successfully confirmed weekly payments count
+  const thisWeekPaid = Number(adm.thisWeekPaidCount ?? 0);
+  const thisWeekTotal = Number(adm.thisWeekTotalMembers ?? adm.totalMembers ?? 0);
+  const rawPaidRate = adm.thisWeekPaidRate !== undefined
+    ? Number(adm.thisWeekPaidRate)
+    : (thisWeekTotal > 0 ? Math.round((thisWeekPaid / thisWeekTotal) * 100) : 0);
+  const paidRate = isNaN(rawPaidRate) ? 0 : Math.max(0, Math.min(100, rawPaidRate));
   const unpaidRate = 100 - paidRate;
+
+  // 3. Outstanding Receivables: member dues & unpaid obligations
+  const rawOutstanding = Number(adm.totalOutstandingReceivables ?? adm.totalOutstandingBalance ?? 0);
+  const outstandingAmount = isNaN(rawOutstanding) ? 0 : Math.max(0, rawOutstanding);
+  const pendingObligationsCount = Number(adm.unpaidObligationsCount ?? adm.unpaidMembersCount ?? 0);
+  const safePendingObligations = isNaN(pendingObligationsCount) ? 0 : pendingObligationsCount;
 
   // Income Overview Bar Chart Data
   const barChartData = chartData?.trends && chartData.trends.length > 0
     ? chartData.trends
     : [
-        { month: 'Current', contributions: Number(adm.weeklyContributions), penalties: Number(adm.paidPenalties), other: 0 }
+        {
+          month: 'Current',
+          contributions: Number(adm.weeklyContributions || 0),
+          penalties: Number(adm.paidPenalties || (adm as any).penaltiesCollected || 0),
+          other: 0,
+        }
       ];
 
+  const paidMembersCount = Number(adm.paidMembersCount ?? thisWeekPaid);
+  const unpaidMembersCount = Number(adm.unpaidMembersCount ?? Math.max(0, thisWeekTotal - thisWeekPaid));
+
   const adminDonut = [
-    { name: 'Paid', value: adm.activeMembers || 0, color: '#10b981' },
-    { name: 'Not Paid', value: adm.pendingMembers || 0, color: '#f59e0b' },
+    { name: 'Paid', value: paidMembersCount, color: '#10b981' },
+    { name: 'Not Paid', value: unpaidMembersCount, color: '#f59e0b' },
   ].filter(d => d.value > 0);
 
   return (
@@ -845,7 +881,7 @@ export default function DashboardPage() {
             <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Members</span>
             <div className="p-2 bg-blue-50 text-blue-600 rounded-xl"><Users size={20} /></div>
           </div>
-          <div className="text-3xl font-black text-gray-900">{adm.totalMembers}</div>
+          <div className="text-3xl font-black text-gray-900">{Number(adm.totalMembers || 0)}</div>
           <p className="text-xs text-emerald-600 mt-2 font-semibold">Active Registered Community</p>
         </div>
 
@@ -863,7 +899,7 @@ export default function DashboardPage() {
             <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">This Week Paid</span>
             <div className="p-2 bg-amber-50 text-amber-600 rounded-xl"><Calendar size={20} /></div>
           </div>
-          <div className="text-3xl font-black text-gray-900">{adm.activeMembers} / {adm.totalMembers}</div>
+          <div className="text-3xl font-black text-gray-900">{thisWeekPaid} / {thisWeekTotal}</div>
           <p className="text-xs text-emerald-600 mt-2 font-semibold">{paidRate}% participation</p>
         </div>
 
@@ -872,8 +908,8 @@ export default function DashboardPage() {
             <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Outstanding</span>
             <div className="p-2 bg-rose-50 text-rose-600 rounded-xl"><AlertTriangle size={20} /></div>
           </div>
-          <div className="text-3xl font-black text-rose-600">{adm.pendingMembers}</div>
-          <p className="text-xs text-rose-600 mt-2 font-semibold">Pending obligations</p>
+          <div className="text-2xl sm:text-3xl font-black text-rose-600">{outstandingAmount.toLocaleString()} ETB</div>
+          <p className="text-xs text-rose-600 mt-2 font-semibold">{safePendingObligations} pending obligations</p>
         </div>
       </div>
 
@@ -962,11 +998,11 @@ export default function DashboardPage() {
           <div className="space-y-2 pt-4 border-t border-gray-100 text-xs">
             <div className="flex justify-between items-center">
               <span className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-emerald-500" /> Paid</span>
-              <span className="font-bold text-gray-800">{paidRate}% ({adm.activeMembers})</span>
+              <span className="font-bold text-gray-800">{paidRate}% ({paidMembersCount})</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full bg-amber-500" /> Not Paid</span>
-              <span className="font-bold text-gray-800">{unpaidRate}% ({adm.pendingMembers})</span>
+              <span className="font-bold text-gray-800">{unpaidRate}% ({unpaidMembersCount})</span>
             </div>
           </div>
         </div>
