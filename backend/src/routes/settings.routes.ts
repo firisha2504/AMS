@@ -14,13 +14,17 @@ import { upload } from '../middleware/upload.js';
 import path from 'path';
 import fs from 'fs/promises';
 import { fileURLToPath } from 'url';
+import {
+  getOrganizationConfig,
+  updateOrganizationConfig,
+} from '../services/organization-config.service.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const router = Router();
 
-router.get('/', authenticate, authorize('ADMIN'), async (req: AuthRequest, res: Response) => {
+router.get('/', authenticate, authorize('ADMIN', 'AUDITOR'), async (req: AuthRequest, res: Response) => {
   const lang = req.lang || 'om';
   const settings = await prisma.systemSetting.findMany({ orderBy: { key: 'asc' } });
   sendSuccess(res, settings, 'general.success', lang);
@@ -1075,8 +1079,6 @@ router.post('/reset-database', authenticate, authorize('ADMIN'), async (req: Aut
   }
 });
 
-export default router;
-
 // Get contribution rate history
 router.get('/contribution-rates', authenticate, authorize('ADMIN'), async (req: AuthRequest, res: Response) => {
   const lang = req.lang || 'om';
@@ -1190,3 +1192,80 @@ router.post('/calculate-joining-with-rates', authenticate, async (req: AuthReque
     sendError(res, 'general.error', lang, 500);
   }
 });
+
+// Get organization starting year and configuration (Authenticated users, Admin, Auditor)
+router.get('/organization', authenticate, async (req: AuthRequest, res: Response) => {
+  const lang = req.lang || 'om';
+  try {
+    const orgConfig = await getOrganizationConfig();
+    sendSuccess(res, orgConfig, 'general.success', lang);
+  } catch (error: any) {
+    console.error('Error fetching organization configuration:', error);
+    sendError(res, error.message || 'general.error', lang, 500);
+  }
+});
+
+// Update organization starting year and configuration (Admin only)
+router.put('/organization', authenticate, authorize('ADMIN'), async (req: AuthRequest, res: Response) => {
+  const lang = req.lang || 'om';
+  try {
+    const {
+      startingEthiopianYear,
+      startingEthiopianMonth,
+      startingEthiopianDate,
+      weeklyContributionRate,
+      rateEffectiveDate,
+    } = req.body;
+
+    if (startingEthiopianYear === undefined || startingEthiopianYear === null) {
+      sendError(res, 'Starting Ethiopian year is required', lang, 400);
+      return;
+    }
+
+    const updated = await updateOrganizationConfig(
+      {
+        startingEthiopianYear: Number(startingEthiopianYear),
+        startingEthiopianMonth: startingEthiopianMonth !== undefined ? Number(startingEthiopianMonth) : undefined,
+        startingEthiopianDate: startingEthiopianDate !== undefined ? Number(startingEthiopianDate) : undefined,
+        weeklyContributionRate: weeklyContributionRate !== undefined ? Number(weeklyContributionRate) : undefined,
+        rateEffectiveDate,
+      },
+      req.user?.userId || null,
+      req.ip
+    );
+
+    sendSuccess(res, updated, 'general.success', lang);
+  } catch (error: any) {
+    console.error('Error updating organization configuration:', error);
+    sendError(res, error.message || 'general.error', lang, 400);
+  }
+});
+
+// Explicit confirmation endpoint to recalculate obligations when starting year changes (Admin only)
+router.post('/organization/recalculate-obligations', authenticate, authorize('ADMIN'), async (req: AuthRequest, res: Response) => {
+  const lang = req.lang || 'om';
+  try {
+    const confirmRecalculate = Boolean(req.body.confirm || req.body.confirmRecalculate);
+    const reason = req.body.reason;
+
+    if (!confirmRecalculate) {
+      sendError(res, 'Explicit admin confirmation is required to recalculate obligations', lang, 400);
+      return;
+    }
+
+    const { recalculateAllMemberObligations } = await import('../services/organization-config.service.js');
+    const result = await recalculateAllMemberObligations({
+      confirmRecalculate,
+      reason,
+      adminUserId: req.user?.userId || null,
+      ipAddress: req.ip,
+    });
+
+    sendSuccess(res, result, 'general.success', lang);
+  } catch (error: any) {
+    console.error('Error recalculating obligations:', error);
+    sendError(res, error.message || 'general.error', lang, 500);
+  }
+});
+
+export default router;

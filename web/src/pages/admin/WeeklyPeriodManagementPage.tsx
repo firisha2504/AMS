@@ -14,9 +14,11 @@ import {
   ChevronRight,
   ShieldCheck,
   CalendarDays,
+  Settings,
+  Building,
 } from 'lucide-react';
 import { api } from '../../lib/api';
-import { ETHIOPIAN_MONTHS } from '../../lib/ethiopianCalendar';
+import { ETHIOPIAN_MONTHS, toEthiopianDate } from '../../lib/ethiopianCalendar';
 import { useNavigate } from 'react-router-dom';
 
 interface WeeklyPeriodData {
@@ -51,15 +53,32 @@ interface PeriodPreviewData {
   periods: any[];
 }
 
+interface OrgConfigData {
+  startingEthiopianYear: number;
+  startingEthiopianMonth: number;
+  startingEthiopianDate: number;
+  startingDate: string;
+  ethiopianMonthNameEn: string;
+  ethiopianMonthNameOm: string;
+  weeklyContributionRate: number;
+  rateEffectiveDate: string;
+}
+
 export default function WeeklyPeriodManagementPage() {
   const { i18n } = useTranslation();
   const navigate = useNavigate();
   const lang = i18n.language === 'en' ? 'en' : 'om';
 
+  // Organization configuration loaded from backend
+  const [orgConfig, setOrgConfig] = useState<OrgConfigData | null>(null);
+
   // Filters
   const [selectedYear, setSelectedYear] = useState<number>(2017);
   const [selectedMonth, setSelectedMonth] = useState<number | ''>(''); // '' means All Months
   const [contributionRate, setContributionRate] = useState<number>(50);
+
+  // Available Ethiopian Years for Selector (derived dynamically from orgConfig)
+  const [ethiopianYears, setEthiopianYears] = useState<number[]>([2017, 2018, 2019, 2020, 2021]);
 
   // Data & loading
   const [periods, setPeriods] = useState<WeeklyPeriodData[]>([]);
@@ -74,8 +93,33 @@ export default function WeeklyPeriodManagementPage() {
   const [previewData, setPreviewData] = useState<PeriodPreviewData | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
 
-  // Available Ethiopian Years for Selector
-  const ethiopianYears = [2015, 2016, 2017, 2018, 2019, 2020];
+  // Fetch organization configuration
+  useEffect(() => {
+    const fetchOrgConfig = async () => {
+      try {
+        const res = await api.get('/settings/organization');
+        if (res.data?.success && res.data.data) {
+          const conf: OrgConfigData = res.data.data;
+          setOrgConfig(conf);
+          setSelectedYear(conf.startingEthiopianYear);
+          setContributionRate(conf.weeklyContributionRate);
+
+          // Build dynamic year options starting from configured starting year
+          const startYr = conf.startingEthiopianYear;
+          const currentEthYear = toEthiopianDate(new Date())?.year || startYr;
+          const endYr = Math.max(startYr + 5, currentEthYear + 2);
+          const years: number[] = [];
+          for (let y = startYr; y <= endYr; y++) {
+            years.push(y);
+          }
+          setEthiopianYears(years);
+        }
+      } catch (err) {
+        console.error('Failed to load organization config:', err);
+      }
+    };
+    fetchOrgConfig();
+  }, []);
 
   const fetchPeriods = async () => {
     setLoading(true);
@@ -102,6 +146,29 @@ export default function WeeklyPeriodManagementPage() {
 
   // Open Period Generation Preview Modal
   const handleOpenGeneratePeriodsModal = async () => {
+    if (orgConfig && selectedYear < orgConfig.startingEthiopianYear) {
+      setError(
+        lang === 'en'
+          ? `Cannot generate weekly periods prior to organization starting year (${orgConfig.startingEthiopianYear} E.C.).`
+          : `Yeroon torbee waggaa hundeeffama gamtaa (${orgConfig.startingEthiopianYear} ALH) dura hin maddisiifamu.`
+      );
+      return;
+    }
+
+    if (
+      orgConfig &&
+      selectedYear === orgConfig.startingEthiopianYear &&
+      selectedMonth !== '' &&
+      Number(selectedMonth) < orgConfig.startingEthiopianMonth
+    ) {
+      setError(
+        lang === 'en'
+          ? `Cannot generate periods for month ${selectedMonth} in starting year ${selectedYear}. Organization started in ${orgConfig.ethiopianMonthNameEn} (${orgConfig.startingEthiopianMonth}).`
+          : `Ji'a ${selectedMonth} waggaa ${selectedYear} keessatti hin maddisiifamu. Gamtaan ji'a ${orgConfig.ethiopianMonthNameOm} hundeeffame.`
+      );
+      return;
+    }
+
     setPreviewLoading(true);
     setShowGeneratePeriodsModal(true);
     try {
@@ -114,6 +181,7 @@ export default function WeeklyPeriodManagementPage() {
       }
     } catch (err: any) {
       console.error('Failed to load period preview:', err);
+      setError(err?.response?.data?.message || 'Failed to load period preview');
     } finally {
       setPreviewLoading(false);
     }
@@ -264,9 +332,39 @@ export default function WeeklyPeriodManagementPage() {
           </h1>
           <p className="text-emerald-100/80 text-sm mt-2 leading-relaxed">
             {lang === 'en'
-              ? 'Automatically generate Saturday-based weekly contribution periods using the verified 13-month Ethiopian Calendar. Enforce 50 ETB Saturday deadlines and prevent duplicate obligations.'
-              : "Dhaha Itoophiyaa ji'oota 13 qabuun yeroo kaffaltii Sanbata torbanii ofumaan maddisiisaa. Kaffaltii Qar. 50 Sanbata duraa fi ittisa kaffaltii dachaa mirkaneessaa."}
+              ? `Automatically generate Saturday-based weekly contribution periods using the verified 13-month Ethiopian Calendar. Enforce ${contributionRate} ETB Saturday deadlines and prevent duplicate obligations.`
+              : `Dhaha Itoophiyaa ji'oota 13 qabuun yeroo kaffaltii Sanbata torbanii ofumaan maddisiisaa. Kaffaltii Qar. ${contributionRate} Sanbata duraa fi ittisa kaffaltii dachaa mirkaneessaa.`}
           </p>
+
+          {/* Configured Starting Year Badge & Settings Link */}
+          <div className="mt-4 p-3.5 rounded-xl bg-white/10 backdrop-blur-xs border border-white/20 flex flex-wrap items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-lg bg-emerald-500/30 text-emerald-300 flex items-center justify-center shrink-0">
+                <Building size={16} />
+              </div>
+              <div>
+                <span className="text-emerald-200/90 font-medium">
+                  {lang === 'en' ? 'Configured Organization Starting Year:' : 'Waggaa Hundeeffama Gamtaa Qindaa\'e:'}
+                </span>{' '}
+                <strong className="text-white text-sm font-extrabold ml-1">
+                  {orgConfig ? `${orgConfig.startingEthiopianYear} E.C.` : '2017 E.C.'}
+                </strong>
+                <span className="text-emerald-100/75 ml-2 text-[11px]">
+                  {orgConfig
+                    ? `(${orgConfig.ethiopianMonthNameEn} ${orgConfig.startingEthiopianDate}, ${orgConfig.startingEthiopianYear} E.C. / ${new Date(orgConfig.startingDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} G.C.)`
+                    : '(Meskerem 1, 2017 E.C. / Sep 11, 2024 G.C.)'}
+                </span>
+              </div>
+            </div>
+
+            <button
+              onClick={() => navigate('/settings')}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/25 hover:bg-emerald-500/35 text-white font-semibold text-xs transition-colors border border-emerald-400/30 active:scale-95"
+            >
+              <Settings size={13} />
+              <span>{lang === 'en' ? 'Configure in Settings' : 'Qindaa\'ina keessatti Jijjiiri'}</span>
+            </button>
+          </div>
 
           {/* Quick Action Buttons */}
           <div className="flex flex-wrap items-center gap-3 mt-5">
@@ -726,8 +824,8 @@ export default function WeeklyPeriodManagementPage() {
                 </h3>
                 <p className="text-xs text-gray-500">
                   {lang === 'en'
-                    ? 'Create 50 ETB weekly payment obligations for all approved members'
-                    : 'Miseensota mirkanaa\'an hundaaf dirqama kaffaltii Qar. 50 uumi'}
+                    ? `Create ${contributionRate} ETB weekly payment obligations for all approved members`
+                    : `Miseensota mirkanaa'an hundaaf dirqama kaffaltii Qar. ${contributionRate} uumi`}
                 </p>
               </div>
             </div>

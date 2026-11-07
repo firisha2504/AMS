@@ -164,7 +164,8 @@ export interface GeneratedPeriodPlan {
 export function planWeeklyPeriodsForEthiopianYear(
   ethYear: number,
   targetMonth?: number,
-  contributionRate = 50
+  contributionRate = 50,
+  earliestAllowedDate?: Date
 ): GeneratedPeriodPlan[] {
   const periods: GeneratedPeriodPlan[] = [];
 
@@ -214,6 +215,13 @@ export function planWeeklyPeriodsForEthiopianYear(
     const ethStart = toEthiopianDate(startDate);
     const ethDue = toEthiopianDate(dueDate);
 
+    // Skip if before organization's earliest allowed date
+    if (earliestAllowedDate && dueDate < earliestAllowedDate) {
+      weekNumber++;
+      currentSaturday.setUTCDate(currentSaturday.getUTCDate() + 7);
+      continue;
+    }
+
     // Filter by target month if specified (based on the Saturday payment due date)
     if (!targetMonth || ethDue.month === targetMonth) {
       const padWeek = String(weekNumber).padStart(2, '0');
@@ -249,9 +257,29 @@ export function planWeeklyPeriodsForEthiopianYear(
 export async function syncWeeklyPeriodsInDb(
   ethYear: number,
   targetMonth?: number,
-  rate = 50
+  rate?: number
 ): Promise<{ createdCount: number; existingCount: number; periods: any[] }> {
-  const plans = planWeeklyPeriodsForEthiopianYear(ethYear, targetMonth, rate);
+  const { getOrganizationConfig } = await import('./organization-config.service.js');
+  const orgConfig = await getOrganizationConfig();
+
+  // Prevent generating periods prior to organization starting year
+  if (ethYear < orgConfig.startingEthiopianYear) {
+    throw new Error(
+      `Cannot generate periods for Ethiopian year ${ethYear}. Organization starting year is ${orgConfig.startingEthiopianYear} E.C.`
+    );
+  }
+
+  // Prevent generating periods prior to organization starting month in starting year
+  if (ethYear === orgConfig.startingEthiopianYear && targetMonth && targetMonth < orgConfig.startingEthiopianMonth) {
+    throw new Error(
+      `Cannot generate periods for month ${targetMonth} in year ${ethYear}. Organization started in month ${orgConfig.startingEthiopianMonth} (${orgConfig.ethiopianMonthNameEn}).`
+    );
+  }
+
+  const effectiveRate = rate && rate > 0 ? rate : orgConfig.weeklyContributionRate;
+  const earliestDate = ethYear === orgConfig.startingEthiopianYear ? orgConfig.startingDate : undefined;
+
+  const plans = planWeeklyPeriodsForEthiopianYear(ethYear, targetMonth, effectiveRate, earliestDate);
   let createdCount = 0;
   let existingCount = 0;
   const resultPeriods = [];
@@ -313,13 +341,21 @@ export async function generateObligationsForWeeklyPeriod(weeklyPeriodId: string)
 
   const eligibleMembers = await prisma.member.findMany({
     where: { status: 'APPROVED' },
-    select: { id: true, fullName: true, memberId: true },
+    select: { id: true, fullName: true, memberId: true, joinDate: true, registrationDate: true },
   });
 
   let createdCount = 0;
   const contributionAmount = Number(period.contributionAmount);
 
   for (const member of eligibleMembers) {
+    // Member's approved financial eligibility date
+    const memberEligibilityDate = member.joinDate || member.registrationDate;
+
+    // Check financial eligibility: do not charge member for weeks prior to their eligibility date
+    if (memberEligibilityDate && period.dueDate < memberEligibilityDate) {
+      continue;
+    }
+
     const existing = await prisma.weeklyObligation.findUnique({
       where: {
         memberId_weekNumber_year: {
@@ -368,15 +404,16 @@ export async function generateObligationsForWeeklyPeriod(weeklyPeriodId: string)
     select: { totalDue: true, amountPaid: true, status: true },
   });
 
-  const totalExpected = allPeriodObligations.reduce((sum, o) => sum + Number(o.totalDue), 0);
-  const totalCollected = allPeriodObligations.reduce((sum, o) => sum + Number(o.amountPaid), 0);
+  const obligationsCount = allPeriodObligations.length;
+  const totalExpected = allPeriodObligations.reduce((acc, o) => acc + Number(o.totalDue), 0);
+  const totalCollected = allPeriodObligations.reduce((acc, o) => acc + Number(o.amountPaid), 0);
   const totalOutstanding = Math.max(0, totalExpected - totalCollected);
 
   const updatedPeriod = await prisma.weeklyPeriod.update({
     where: { id: period.id },
     data: {
-      isGenerated: true,
-      obligationsCount: allPeriodObligations.length,
+      isGenerated: obligationsCount > 0,
+      obligationsCount,
       totalExpected,
       totalCollected,
       totalOutstanding,
@@ -386,7 +423,7 @@ export async function generateObligationsForWeeklyPeriod(weeklyPeriodId: string)
   return {
     period: updatedPeriod,
     createdObligationsCount: createdCount,
-    eligibleMembersCount: eligibleMembers.length,
+    eligibleMembersCount: obligationsCount,
     totalExpectedAmount: totalExpected,
   };
 }

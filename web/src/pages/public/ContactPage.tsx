@@ -142,8 +142,8 @@ export default function ContactPage() {
     {
       qEn: 'How can a new member register with the association?',
       qOm: 'Miseensi haaraan akkamitti gamtaa kanaatti makamuu danda\'a?',
-      aEn: 'Youth living in Melka Jabdu / Qaxanaa Araattii can apply online by visiting the registration portal or attending the weekly Saturday gathering. Admission follows the bylaws established on 1/1/2017 EC.',
-      aOm: 'Dargaggoonni Melka Jabdu Qaxanaa Araattii jiraatan karaa marsariitii kanaan ykn walga\'ii Sanbataa irratti qaamaan argamuun iyyachuu danda\'u. Galmeen heera 1/1/2017 ALH hundeeffame bu\'uura godhata.',
+      aEn: `Youth living in Melka Jabdu / Qaxanaa Araattii can apply online by visiting the registration portal or attending the weekly Saturday gathering. Admission follows the bylaws established on ${contactData?.founded || '1/1/2017 EC'}.`,
+      aOm: `Dargaggoonni Melka Jabdu Qaxanaa Araattii jiraatan karaa marsariitii kanaan ykn walga'ii Sanbataa irratti qaamaan argamuun iyyachuu danda'u. Galmeen heera ${contactData?.founded || '1/1/2017 ALH'} hundeeffame bu'uura godhata.`,
     },
     {
       qEn: 'What are the weekly contribution requirements?',
@@ -220,7 +220,9 @@ export default function ContactPage() {
                 <p className="text-sm text-blue-100 font-semibold">{fullAddress}</p>
                 <div className="mt-3 pt-3 border-t border-white/10">
                   <span className="text-[11px] text-amber-400 font-medium">
-                    {isOm ? 'Hundeeffama: 1/1/2017 ALI' : 'Founded: 1/1/2017 EC'}
+                    {contactData?.founded
+                      ? (isOm ? `Hundeeffama: ${contactData.founded}` : `Founded: ${contactData.founded}`)
+                      : (isOm ? 'Hundeeffama: 1/1/2017 ALI' : 'Founded: 1/1/2017 EC')}
                   </span>
                 </div>
               </div>

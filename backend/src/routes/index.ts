@@ -14,6 +14,7 @@ import joiningObligationsRoutes from './joining-obligations.routes.js';
 import analyticsRoutes from './analytics.routes.js';
 import calendarRoutes from './ethiopian-calendar.routes.js';
 import bulkMemberImportRoutes from './bulk-member-import.routes.js';
+import attendanceRoutes from './attendance.routes.js';
 import { authenticate } from '../middleware/auth.js';
 
 const router = Router();
@@ -21,6 +22,7 @@ const router = Router();
 router.use('/auth', authRoutes);
 router.use('/members/bulk-import', bulkMemberImportRoutes);
 router.use('/members', membersRoutes);
+router.use('/attendance', attendanceRoutes);
 router.use('/payments', paymentsRoutes);
 router.use('/payment-requests', paymentRequestsRoutes);
 router.use('/penalties', penaltiesRoutes);

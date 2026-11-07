@@ -125,6 +125,7 @@ export default function AboutPage() {
 
   const [activeTab, setActiveTab] = useState<string>('organization-history');
   const [tabs, setTabs] = useState<ContentTab[]>([]);
+  const [orgConfig, setOrgConfig] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   // Dedicated language switch for regulations (allows independent Afaan Oromoo / English viewing)
@@ -145,9 +146,15 @@ export default function AboutPage() {
 
   const fetchContent = async () => {
     try {
-      const res = await api.get('/public/about');
-      const data = (res.data.data as ContentTab[]) || [];
+      const [aboutRes, orgRes] = await Promise.all([
+        api.get('/public/about'),
+        api.get('/public/organization'),
+      ]);
+      const data = (aboutRes.data.data as ContentTab[]) || [];
       setTabs(data);
+      if (orgRes.data?.success && orgRes.data.data) {
+        setOrgConfig(orgRes.data.data);
+      }
 
       const rulesTab = data.find((tab) => tab.slug === 'heera-danbii');
       if (rulesTab) {
@@ -330,7 +337,7 @@ export default function AboutPage() {
                       {isOmGlobal ? 'Seenaa fi Hundeeffama Gamtaa' : 'Organization History & Foundation'}
                     </h2>
                     <p className="text-xs text-emerald-400 font-semibold">
-                      Gamtaan dargaggoota Melka Jabdu  Qaxanaa 4 tti — Founded 1/1/2017 EC
+                      Gamtaan dargaggoota Melka Jabdu  Qaxanaa 4 tti — Founded {orgConfig ? `${orgConfig.startingEthiopianDate}/${orgConfig.startingEthiopianMonth}/${orgConfig.startingEthiopianYear} EC` : '1/1/2017 EC'}
                     </p>
                   </div>
                 </div>
@@ -338,8 +345,18 @@ export default function AboutPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="p-4 rounded-xl bg-white/5 border border-white/5">
                     <p className="text-xs text-blue-300 font-medium">{isOmGlobal ? 'Guyyaa Hundeeffamaa' : 'Founded Date'}</p>
-                    <p className="text-base font-bold text-white mt-1">Fuulbana 1, 2017 ALH</p>
-                    <p className="text-[11px] text-gray-400">September 11, 2024 GC</p>
+                    <p className="text-base font-bold text-white mt-1">
+                      {orgConfig
+                        ? (isOmGlobal
+                            ? `${orgConfig.ethiopianMonthNameOm} ${orgConfig.startingEthiopianDate}, ${orgConfig.startingEthiopianYear} ALH`
+                            : `${orgConfig.ethiopianMonthNameEn} ${orgConfig.startingEthiopianDate}, ${orgConfig.startingEthiopianYear} EC`)
+                        : (isOmGlobal ? 'Fuulbana 1, 2017 ALH' : 'Meskerem 1, 2017 EC')}
+                    </p>
+                    <p className="text-[11px] text-gray-400">
+                      {orgConfig?.startingDate
+                        ? new Date(orgConfig.startingDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) + ' GC'
+                        : 'September 11, 2024 GC'}
+                    </p>
                   </div>
                   <div className="p-4 rounded-xl bg-white/5 border border-white/5">
                     <p className="text-xs text-blue-300 font-medium">{isOmGlobal ? 'Bakka Hundeeffamaa' : 'Official Location'}</p>
@@ -354,7 +371,7 @@ export default function AboutPage() {
                 </div>
 
                 <div className="whitespace-pre-line leading-relaxed text-sm text-blue-100">
-                  {isOmGlobal && aboutTab?.contentOm ? aboutTab.contentOm : (aboutTab?.content || 'Gamtaan dargaggoota Melka Jabdu  Qaxanaa 4 tti gamtaa hawaasummaa dargaggootaati. Gamtaan kun tokkummaa, wal-gargaarsa, jaalala, kabajaafi hariiroo gaarii dargaggoota gidduutti cimsuuf Fuulbana 1, 2017 ALH hundeeffame.')}
+                  {isOmGlobal && aboutTab?.contentOm ? aboutTab.contentOm : (aboutTab?.content || `Gamtaan dargaggoota Melka Jabdu  Qaxanaa 4 tti gamtaa hawaasummaa dargaggootaati. Gamtaan kun tokkummaa, wal-gargaarsa, jaalala, kabajaafi hariiroo gaarii dargaggoota gidduutti cimsuuf ${orgConfig ? `${orgConfig.ethiopianMonthNameOm} ${orgConfig.startingEthiopianDate}, ${orgConfig.startingEthiopianYear} ALH` : 'Fuulbana 1, 2017 ALH'} hundeeffame.`)}
                 </div>
               </div>
             </div>
@@ -546,8 +563,8 @@ export default function AboutPage() {
 
                 <p className="text-xs text-blue-200/90 leading-relaxed">
                   {isOm
-                    ? 'Gamtaan dargaggoota Melka Jabdu  Qaxanaa 4 tti bu\'uura heera kanaatiin gamtaa seera qabeessa ta\'e seera biyyattii bu\'uura godhachuun, akkasumas aadaa fi duudhaa ummataa haala hin faallessineen Fuulbana 1/1/2017 akka lakk. Itoophiyaatti hundaa\'eera.'
-                    : 'Based on this constitutional provision, Gamtaan dargaggoota Melka Jabdu  Qaxanaa 4 tti was officially founded on Meskerem 1, 2017 Ethiopian Calendar as a legally anchored youth association upholding national laws and cultural traditions.'}
+                    ? `Gamtaan dargaggoota Melka Jabdu  Qaxanaa 4 tti bu'uura heera kanaatiin gamtaa seera qabeessa ta'e seera biyyattii bu'uura godhachuun, akkasumas aadaa fi duudhaa ummataa haala hin faallessineen ${orgConfig ? `${orgConfig.ethiopianMonthNameOm} ${orgConfig.startingEthiopianDate}/${orgConfig.startingEthiopianYear}` : 'Fuulbana 1/1/2017'} akka lakk. Itoophiyaatti hundaa'eera.`
+                    : `Based on this constitutional provision, Gamtaan dargaggoota Melka Jabdu  Qaxanaa 4 tti was officially founded on ${orgConfig ? `${orgConfig.ethiopianMonthNameEn} ${orgConfig.startingEthiopianDate}, ${orgConfig.startingEthiopianYear}` : 'Meskerem 1, 2017'} Ethiopian Calendar as a legally anchored youth association upholding national laws and cultural traditions.`}
                 </p>
               </div>
 
@@ -631,7 +648,7 @@ export default function AboutPage() {
                   "Tokkummaan Ciminaa fi Milkaayina"
                 </p>
                 <p className="text-xs text-blue-200 mt-1">
-                  Gamtaan dargaggoota Melka Jabdu  Qaxanaa 4 tti — Founded 1/1/2017 EC
+                  Gamtaan dargaggoota Melka Jabdu  Qaxanaa 4 tti — Founded {orgConfig ? `${orgConfig.startingEthiopianDate}/${orgConfig.startingEthiopianMonth}/${orgConfig.startingEthiopianYear} EC` : '1/1/2017 EC'}
                 </p>
               </div>
             </div>

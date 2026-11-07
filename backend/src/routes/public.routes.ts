@@ -3,9 +3,21 @@ import prisma from '../config/database.js';
 import { validateBody } from '../middleware/validate.js';
 import { updatePublicContentSchema } from '../validators/schemas.js';
 import { authenticate, authorize, optionalAuth, AuthRequest } from '../middleware/auth.js';
-import { sendSuccess } from '../utils/response.js';
+import { sendSuccess, sendError } from '../utils/response.js';
+import { getOrganizationConfig } from '../services/organization-config.service.js';
 
 const router = Router();
+
+router.get('/organization', optionalAuth, async (req: AuthRequest, res: Response) => {
+  const lang = req.lang || 'om';
+  try {
+    const config = await getOrganizationConfig();
+    sendSuccess(res, config, 'general.success', lang);
+  } catch (error) {
+    console.error('Error fetching public organization config:', error);
+    sendError(res, 'general.error', lang, 500);
+  }
+});
 
 router.get('/home', optionalAuth, async (req: AuthRequest, res: Response) => {
   const lang = req.lang || 'om';
@@ -101,7 +113,8 @@ router.get('/payment-info', optionalAuth, async (req: AuthRequest, res: Response
     settingsMap[s.key] = s.value;
   }
 
-  const weeklyContribution = parseFloat(settingsMap['weekly_contribution'] || '50');
+  const orgConfig = await getOrganizationConfig();
+  const weeklyContribution = orgConfig.weeklyContributionRate || parseFloat(settingsMap['weekly_contribution'] || '50');
   const weeklyPenalty = parseFloat(settingsMap['weekly_penalty'] || '50');
   const monthlyPenalty = parseFloat(settingsMap['monthly_penalty'] || '100');
   const graduationContribution = parseFloat(settingsMap['graduation_contribution'] || '100');
@@ -258,8 +271,8 @@ router.get('/payment-info', optionalAuth, async (req: AuthRequest, res: Response
         historicalJoining: {
           titleEn: 'Historical Joining Obligations',
           titleOm: 'Kaffaltii Seensaa fi Seenaa',
-          descriptionEn: 'Members joining after the founding date (1/1/2017 EC) contribute an assessed retrospective rate (variable weekly rates + past special campaigns) or follow an approved installment plan without undue barrier.',
-          descriptionOm: 'Miseensonni erga gamtaan hundeeffamee (1/1/2017 ALH) booda galmaa\'an kaffaltii seensaa bu\'uura gumaata kaffalameetiin herreegamu kaffalu ykn qoodanii kaffaluuf carraa qabaatu.',
+          descriptionEn: `Members joining after the founding date (${orgConfig.startingEthiopianDate}/${orgConfig.startingEthiopianMonth}/${orgConfig.startingEthiopianYear} EC) contribute an assessed retrospective rate (variable weekly rates + past special campaigns) or follow an approved installment plan without undue barrier.`,
+          descriptionOm: `Miseensonni erga gamtaan hundeeffamee (${orgConfig.startingEthiopianDate}/${orgConfig.startingEthiopianMonth}/${orgConfig.startingEthiopianYear} ALH) booda galmaa'an kaffaltii seensaa bu'uura gumaata kaffalameetiin herreegamu kaffalu ykn qoodanii kaffaluuf carraa qabaatu.`,
         },
         specialAndEmergency: {
           titleEn: 'Special & Emergency Contributions',
@@ -278,14 +291,15 @@ router.get('/payment-info', optionalAuth, async (req: AuthRequest, res: Response
 router.get('/contact', optionalAuth, async (req: AuthRequest, res: Response) => {
   const lang = req.lang || 'om';
 
-  const contactContent = await prisma.publicContent.findUnique({
-    where: { slug: 'contact' },
-  });
+  const [contactContent, orgConfig] = await Promise.all([
+    prisma.publicContent.findUnique({ where: { slug: 'contact' } }),
+    getOrganizationConfig(),
+  ]);
 
   const contactData = {
     organization: 'Gamtaan dargaggoota Melka Jabdu Qaxaa Araati',
     slogan: 'Tokkummaan Ciminaa fi Milkaayina',
-    founded: '1/1/2017 EC (Fuulbana 1, 2017 ALH)',
+    founded: `${orgConfig.startingEthiopianDate}/${orgConfig.startingEthiopianMonth}/${orgConfig.startingEthiopianYear} EC (${orgConfig.ethiopianMonthNameEn} ${orgConfig.startingEthiopianDate}, ${orgConfig.startingEthiopianYear} EC)`,
     address: {
       city: 'Dire Dawa',
       subCity: 'Melka Jabdu / Qaxaa Araati',

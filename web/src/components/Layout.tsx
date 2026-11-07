@@ -119,6 +119,7 @@ export default function Layout({ children }: LayoutProps) {
                 src={logoUrl} 
                 alt="App Logo"
                 className="w-10 h-10 rounded-lg object-contain bg-white/5 p-1.5"
+                onError={() => setLogoUrl(null)}
               />
             ) : (
               <div className="w-10 h-10 rounded-lg flex items-center justify-center text-white font-bold text-lg bg-gradient-to-br from-green-500 to-emerald-600">

@@ -51,8 +51,38 @@ enum PaymentStatus {
 
 enum AttendanceStatus {
   PRESENT
+  LATE
   ABSENT
   EXCUSED
+}
+
+enum AttendanceSource {
+  QR
+  MANUAL
+  CORRECTION
+}
+
+enum MeetingType {
+  REGULAR
+  EMERGENCY
+  ANNUAL
+  SPECIAL
+  OTHER
+}
+
+enum MeetingStatus {
+  DRAFT
+  SCHEDULED
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+enum QRSessionStatus {
+  ACTIVE
+  PAUSED
+  CLOSED
+  EXPIRED
 }
 
 enum TransactionType {
@@ -156,6 +186,8 @@ model User {
   authorizedReversals TransactionReversal[] @relation("AuthorizedReversals")
   waivedPenalties   Penalty[]        @relation("WaivedPenalties")
   bulkImports       BulkImportJob[]  @relation("BulkImports")
+  createdQRSessions   MeetingQRCodeSession[] @relation("CreatedQRSessions")
+  attendanceAuditLogs AttendanceAuditLog[]   @relation("AttendanceAuditLogs")
 
   @@index([role])
   @@index([phone])
@@ -367,38 +399,94 @@ model Fine {
 }
 
 model Meeting {
-  id          String   @id @default(uuid())
-  title       String
-  location    String?
-  meetingDate DateTime
-  meetingTime String?
-  agenda      String?
-  createdById String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                 String               @id @default(uuid())
+  title              String
+  description        String?
+  meetingType        MeetingType          @default(REGULAR)
+  ethiopianDate      String?
+  meetingDate        DateTime
+  meetingTime        String?
+  startTime          String?
+  endTime            String?
+  location           String?
+  agenda             String?
+  status             MeetingStatus        @default(SCHEDULED)
+  eligibleMemberType String               @default("ALL") // "ALL", "CUSTOM"
+  createdById        String
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
 
-  createdBy  User         @relation(fields: [createdById], references: [id])
+  createdBy  User                   @relation(fields: [createdById], references: [id])
   attendance Attendance[]
+  qrSessions MeetingQRCodeSession[]
 
   @@index([meetingDate])
+  @@index([status])
 }
 
 model Attendance {
-  id        String           @id @default(uuid())
-  meetingId String
-  memberId  String
-  status    AttendanceStatus
-  remarks   String?
+  id           String                @id @default(uuid())
+  meetingId    String
+  memberId     String
+  status       AttendanceStatus
+  source       AttendanceSource      @default(MANUAL)
+  checkInAt    DateTime?
+  verifiedAt   DateTime?
+  qrSessionId  String?
+  remarks      String?
   recordedById String
-  createdAt DateTime         @default(now())
-  updatedAt DateTime         @updatedAt
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
 
-  meeting    Meeting @relation(fields: [meetingId], references: [id], onDelete: Cascade)
-  member     Member  @relation(fields: [memberId], references: [id], onDelete: Cascade)
-  recordedBy User    @relation(fields: [recordedById], references: [id])
+  meeting    Meeting                @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  member     Member                 @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  recordedBy User                   @relation(fields: [recordedById], references: [id])
+  qrSession  MeetingQRCodeSession?  @relation(fields: [qrSessionId], references: [id], onDelete: SetNull)
+  auditLogs  AttendanceAuditLog[]
 
   @@unique([meetingId, memberId])
   @@index([memberId])
+  @@index([meetingId])
+  @@index([status])
+}
+
+model MeetingQRCodeSession {
+  id           String          @id @default(uuid())
+  meetingId    String
+  sessionToken String          @unique
+  tokenHash    String?
+  status       QRSessionStatus @default(ACTIVE)
+  expiresAt    DateTime
+  startedAt    DateTime        @default(now())
+  closedAt     DateTime?
+  createdById  String
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  meeting     Meeting      @relation(fields: [meetingId], references: [id], onDelete: Cascade)
+  createdBy   User         @relation("CreatedQRSessions", fields: [createdById], references: [id])
+  attendances Attendance[]
+
+  @@index([meetingId])
+  @@index([sessionToken])
+  @@index([status])
+}
+
+model AttendanceAuditLog {
+  id             String            @id @default(uuid())
+  attendanceId   String
+  action         String
+  previousStatus AttendanceStatus?
+  newStatus      AttendanceStatus
+  reason         String?
+  changedById    String
+  createdAt      DateTime          @default(now())
+
+  attendance Attendance @relation(fields: [attendanceId], references: [id], onDelete: Cascade)
+  changedBy  User       @relation("AttendanceAuditLogs", fields: [changedById], references: [id])
+
+  @@index([attendanceId])
+  @@index([createdAt])
 }
 
 model Transaction {
@@ -464,6 +552,18 @@ model SystemSetting {
   label     String?
   labelOm   String?
   updatedAt DateTime @updatedAt
+}
+
+model OrganizationConfig {
+  id                     String   @id @default(uuid())
+  startingEthiopianYear  Int      @default(2017)
+  startingEthiopianMonth Int      @default(1)
+  startingEthiopianDate  Int      @default(1)
+  startingDate           DateTime @default(now())
+  weeklyContributionRate Decimal  @default(50) @db.Decimal(12, 2)
+  rateEffectiveDate      DateTime @default(now())
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
 }
 
 // Track contribution rate changes over time for accurate historical calculations

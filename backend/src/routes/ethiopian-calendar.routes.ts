@@ -13,6 +13,7 @@ import {
   getWeeklyPeriodsWithSummary,
   planWeeklyPeriodsForEthiopianYear,
 } from '../services/ethiopian-calendar.service.js';
+import { getOrganizationConfig } from '../services/organization-config.service.js';
 import prisma from '../config/database.js';
 
 const router = Router();
@@ -132,7 +133,8 @@ router.get('/weekly-periods', authenticate, authorize('ADMIN', 'AUDITOR'), async
 router.post('/weekly-periods/generate', authenticate, authorize('ADMIN'), async (req: AuthRequest, res: Response) => {
   const lang = req.lang || 'om';
   try {
-    const { ethiopianYear, ethiopianMonth, contributionRate = 50 } = req.body;
+    const orgConfig = await getOrganizationConfig();
+    const { ethiopianYear, ethiopianMonth, contributionRate = orgConfig.weeklyContributionRate } = req.body;
     if (!ethiopianYear) {
       sendError(res, 'general.validationError', lang, 400);
       return;
@@ -140,7 +142,7 @@ router.post('/weekly-periods/generate', authenticate, authorize('ADMIN'), async 
 
     const year = Number(ethiopianYear);
     const month = ethiopianMonth ? Number(ethiopianMonth) : undefined;
-    const rate = Number(contributionRate) || 50;
+    const rate = Number(contributionRate) || orgConfig.weeklyContributionRate;
 
     const result = await syncWeeklyPeriodsInDb(year, month, rate);
 
@@ -157,9 +159,9 @@ router.post('/weekly-periods/generate', authenticate, authorize('ADMIN'), async 
       lang,
       201
     );
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error generating weekly periods:', error);
-    sendError(res, 'general.error', lang, 500);
+    sendError(res, error.message || 'general.error', lang, 400);
   }
 });
 
@@ -194,11 +196,33 @@ router.post('/weekly-periods/:id/generate-obligations', authenticate, authorize(
 router.get('/weekly-periods/preview', authenticate, authorize('ADMIN'), async (req: AuthRequest, res: Response) => {
   const lang = req.lang || 'om';
   try {
-    const year = Number(req.query.year) || 2017;
+    const orgConfig = await getOrganizationConfig();
+    const year = req.query.year ? Number(req.query.year) : orgConfig.startingEthiopianYear;
     const month = req.query.month ? Number(req.query.month) : undefined;
-    const rate = Number(req.query.rate) || 50;
+    const rate = req.query.rate ? Number(req.query.rate) : orgConfig.weeklyContributionRate;
 
-    const plans = planWeeklyPeriodsForEthiopianYear(year, month, rate);
+    if (year < orgConfig.startingEthiopianYear) {
+      sendError(
+        res,
+        `Cannot preview or generate periods for Ethiopian year ${year} prior to organization starting year ${orgConfig.startingEthiopianYear} E.C.`,
+        lang,
+        400
+      );
+      return;
+    }
+
+    if (year === orgConfig.startingEthiopianYear && month !== undefined && month < orgConfig.startingEthiopianMonth) {
+      sendError(
+        res,
+        `Cannot preview or generate periods for month ${month} prior to organization starting month ${orgConfig.startingEthiopianMonth} (${orgConfig.ethiopianMonthNameEn}) in year ${year}.`,
+        lang,
+        400
+      );
+      return;
+    }
+
+    const earliestDate = year === orgConfig.startingEthiopianYear ? orgConfig.startingDate : undefined;
+    const plans = planWeeklyPeriodsForEthiopianYear(year, month, rate, earliestDate);
     const eligibleCount = await prisma.member.count({ where: { status: 'APPROVED' } });
 
     sendSuccess(
@@ -215,9 +239,9 @@ router.get('/weekly-periods/preview', authenticate, authorize('ADMIN'), async (r
       'general.success',
       lang
     );
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error previewing weekly periods:', error);
-    sendError(res, 'general.error', lang, 500);
+    sendError(res, error.message || 'general.error', lang, 400);
   }
 });
 

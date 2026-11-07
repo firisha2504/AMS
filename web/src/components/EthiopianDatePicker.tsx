@@ -33,7 +33,7 @@ export const EthiopianDatePicker: React.FC<EthiopianDatePickerProps> = ({
 
   // Current or selected Ethiopian date components
   const initialEth = value ? toEthiopianDate(value) : toEthiopianDate(new Date());
-  const [selectedYear, setSelectedYear] = useState<number>(initialEth ? initialEth.year : 2017);
+  const [selectedYear, setSelectedYear] = useState<number>(initialEth ? initialEth.year : (toEthiopianDate(new Date())?.year || 2018));
   const [selectedMonth, setSelectedMonth] = useState<number>(initialEth ? initialEth.month : 1);
   const [selectedDay, setSelectedDay] = useState<number>(initialEth ? initialEth.date : 1);
   const [isOpen, setIsOpen] = useState(false);
