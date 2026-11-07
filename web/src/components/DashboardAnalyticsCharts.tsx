@@ -145,7 +145,7 @@ export default function DashboardAnalyticsCharts({
       {activeTab === 'financial' && (
         <div className="space-y-6">
           {/* Monthly Income and Expenses Grouped Bar Chart */}
-          <div className="bg-white rounded-2xl p-5 sm:p-6 border border-gray-200 shadow-sm">
+          <div className="bg-white rounded-2xl p-5 sm:p-6 border border-gray-200 shadow-sm w-full min-w-0">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-2">
               <div>
                 <h3 className="text-base font-bold text-gray-900">
@@ -160,8 +160,8 @@ export default function DashboardAnalyticsCharts({
             </div>
 
             {financialData?.monthlyTrends && financialData.monthlyTrends.length > 0 ? (
-              <div className="h-72 w-full">
-                <ResponsiveContainer width="100%" height="100%">
+              <div className="h-72 w-full min-w-0">
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={200}>
                   <BarChart data={financialData.monthlyTrends} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
                     <XAxis dataKey="month" tick={{ fontSize: 11, fill: '#6B7280' }} />
@@ -189,7 +189,7 @@ export default function DashboardAnalyticsCharts({
           {/* 2-Column: Category Distribution & Status Distribution */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Category Doughnut */}
-            <div className="bg-white rounded-2xl p-5 sm:p-6 border border-gray-200 shadow-sm flex flex-col justify-between">
+            <div className="bg-white rounded-2xl p-5 sm:p-6 border border-gray-200 shadow-sm flex flex-col justify-between w-full min-w-0">
               <div>
                 <h3 className="text-base font-bold text-gray-900 mb-1">
                   {isOm ? 'Raabsa Gosoota Kaffaltii 7' : 'Payment Category Distribution (7 Categories)'}
@@ -200,8 +200,8 @@ export default function DashboardAnalyticsCharts({
               </div>
 
               {categoryDistribution.length > 0 ? (
-                <div className="h-64 relative flex items-center justify-center">
-                  <ResponsiveContainer width="100%" height="100%">
+                <div className="h-64 w-full min-w-0 relative">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={200}>
                     <PieChart>
                       <Pie
                         data={categoryDistribution}
@@ -229,7 +229,7 @@ export default function DashboardAnalyticsCharts({
             </div>
 
             {/* Payment Status Doughnut */}
-            <div className="bg-white rounded-2xl p-5 sm:p-6 border border-gray-200 shadow-sm flex flex-col justify-between">
+            <div className="bg-white rounded-2xl p-5 sm:p-6 border border-gray-200 shadow-sm flex flex-col justify-between w-full min-w-0">
               <div>
                 <h3 className="text-base font-bold text-gray-900 mb-1">
                   {isOm ? 'Haala Kaffaltii Waliigalaa' : 'Payment Status Distribution'}
@@ -240,8 +240,8 @@ export default function DashboardAnalyticsCharts({
               </div>
 
               {paymentStatusData.length > 0 ? (
-                <div className="h-64 relative flex items-center justify-center">
-                  <ResponsiveContainer width="100%" height="100%">
+                <div className="h-64 w-full min-w-0 relative">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={200}>
                     <PieChart>
                       <Pie
                         data={paymentStatusData}
@@ -270,7 +270,7 @@ export default function DashboardAnalyticsCharts({
           </div>
 
           {/* Outstanding Receivables Bar Chart */}
-          <div className="bg-white rounded-2xl p-5 sm:p-6 border border-gray-200 shadow-sm">
+          <div className="bg-white rounded-2xl p-5 sm:p-6 border border-gray-200 shadow-sm w-full min-w-0">
             <h3 className="text-base font-bold text-gray-900 mb-1">
               {isOm ? 'Qorannoo Hafe Kaffalamuu' : 'Outstanding Receivables by Category'}
             </h3>
@@ -279,8 +279,8 @@ export default function DashboardAnalyticsCharts({
             </p>
 
             {financialData?.outstandingBalanceAnalysis && financialData.outstandingBalanceAnalysis.length > 0 ? (
-              <div className="h-64 w-full">
-                <ResponsiveContainer width="100%" height="100%">
+              <div className="h-64 w-full min-w-0">
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={200}>
                   <BarChart data={financialData.outstandingBalanceAnalysis}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
                     <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#6B7280' }} />
@@ -347,7 +347,7 @@ export default function DashboardAnalyticsCharts({
           {/* 2-Column: Attendance Doughnut & Meeting Trends Line Chart */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Overview Doughnut */}
-            <div className="bg-white rounded-2xl p-5 sm:p-6 border border-gray-200 shadow-sm flex flex-col justify-between">
+            <div className="bg-white rounded-2xl p-5 sm:p-6 border border-gray-200 shadow-sm flex flex-col justify-between w-full min-w-0">
               <div>
                 <h3 className="text-base font-bold text-gray-900 mb-1">
                   {isOm ? 'Haala Hirmaannaa Waliigalaa' : 'Attendance Overview'}
@@ -358,8 +358,8 @@ export default function DashboardAnalyticsCharts({
               </div>
 
               {attendanceOverviewData.length > 0 ? (
-                <div className="h-64 relative flex items-center justify-center">
-                  <ResponsiveContainer width="100%" height="100%">
+                <div className="h-64 w-full min-w-0 relative">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={200}>
                     <PieChart>
                       <Pie
                         data={attendanceOverviewData}
@@ -387,7 +387,7 @@ export default function DashboardAnalyticsCharts({
             </div>
 
             {/* Attendance Trends Line Chart */}
-            <div className="bg-white rounded-2xl p-5 sm:p-6 border border-gray-200 shadow-sm flex flex-col justify-between">
+            <div className="bg-white rounded-2xl p-5 sm:p-6 border border-gray-200 shadow-sm flex flex-col justify-between w-full min-w-0">
               <div>
                 <h3 className="text-base font-bold text-gray-900 mb-1">
                   {isOm ? 'Tarkaanfii Hirmaannaa Yeroo' : 'Attendance Rate Trends'}
@@ -398,8 +398,8 @@ export default function DashboardAnalyticsCharts({
               </div>
 
               {attendanceData?.trends && attendanceData.trends.length > 0 ? (
-                <div className="h-64 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
+                <div className="h-64 w-full min-w-0">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={200}>
                     <LineChart data={attendanceData.trends}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
                       <XAxis dataKey="date" tick={{ fontSize: 10, fill: '#6B7280' }} />
@@ -418,7 +418,7 @@ export default function DashboardAnalyticsCharts({
           </div>
 
           {/* Meeting Attendance Comparison Bar Chart */}
-          <div className="bg-white rounded-2xl p-5 sm:p-6 border border-gray-200 shadow-sm">
+          <div className="bg-white rounded-2xl p-5 sm:p-6 border border-gray-200 shadow-sm w-full min-w-0">
             <h3 className="text-base font-bold text-gray-900 mb-1">
               {isOm ? 'Wal-bira Qabiyyaa Walga\'iiwwanii' : 'Meeting Attendance Comparison'}
             </h3>
@@ -427,8 +427,8 @@ export default function DashboardAnalyticsCharts({
             </p>
 
             {attendanceData?.meetingComparison && attendanceData.meetingComparison.length > 0 ? (
-              <div className="h-64 w-full">
-                <ResponsiveContainer width="100%" height="100%">
+              <div className="h-64 w-full min-w-0">
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={200}>
                   <BarChart data={attendanceData.meetingComparison}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
                     <XAxis dataKey="title" tick={{ fontSize: 10, fill: '#6B7280' }} />
@@ -457,7 +457,7 @@ export default function DashboardAnalyticsCharts({
         <div className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Member Growth Curve */}
-            <div className="bg-white rounded-2xl p-5 sm:p-6 border border-gray-200 shadow-sm flex flex-col justify-between">
+            <div className="bg-white rounded-2xl p-5 sm:p-6 border border-gray-200 shadow-sm flex flex-col justify-between w-full min-w-0">
               <div>
                 <h3 className="text-base font-bold text-gray-900 mb-1">
                   {isOm ? 'Guddina Miseensotaa' : 'Member Registration Growth'}
@@ -468,8 +468,8 @@ export default function DashboardAnalyticsCharts({
               </div>
 
               {memberData?.growthTrends && memberData.growthTrends.length > 0 ? (
-                <div className="h-64 w-full">
-                  <ResponsiveContainer width="100%" height="100%">
+                <div className="h-64 w-full min-w-0">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={200}>
                     <AreaChart data={memberData.growthTrends}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
                       <XAxis dataKey="month" tick={{ fontSize: 10, fill: '#6B7280' }} />
@@ -487,7 +487,7 @@ export default function DashboardAnalyticsCharts({
             </div>
 
             {/* Membership Status Doughnut */}
-            <div className="bg-white rounded-2xl p-5 sm:p-6 border border-gray-200 shadow-sm flex flex-col justify-between">
+            <div className="bg-white rounded-2xl p-5 sm:p-6 border border-gray-200 shadow-sm flex flex-col justify-between w-full min-w-0">
               <div>
                 <h3 className="text-base font-bold text-gray-900 mb-1">
                   {isOm ? 'Haala Miseensummaa' : 'Membership Status Distribution'}
@@ -498,8 +498,8 @@ export default function DashboardAnalyticsCharts({
               </div>
 
               {memberData?.statusDistribution && memberData.statusDistribution.length > 0 ? (
-                <div className="h-64 relative flex items-center justify-center">
-                  <ResponsiveContainer width="100%" height="100%">
+                <div className="h-64 w-full min-w-0 relative">
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={200}>
                     <PieChart>
                       <Pie
                         data={memberData.statusDistribution}

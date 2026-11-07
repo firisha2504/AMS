@@ -22,8 +22,9 @@ export default function LoginPage() {
     try {
       const needsPasswordChange = await login(identifier, password);
       navigate(needsPasswordChange ? '/change-password' : '/dashboard');
-    } catch {
-      setError(t('auth.loginFailed', 'Invalid credentials'));
+    } catch (err: any) {
+      const msg = err.response?.data?.message || t('auth.loginFailed', 'Invalid credentials');
+      setError(msg);
     } finally {
       setLoading(false);
     }

@@ -107,19 +107,21 @@ app.use((err: Error, _req: express.Request, res: express.Response, _next: expres
   res.status(500).json({ success: false, message: 'Internal server error' });
 });
 
-const server = app.listen(config.port, () => {
-  console.log(`AMS API running on port ${config.port} [${config.nodeEnv}]`);
-  startScheduledJobs();
-});
+if (process.env.NODE_ENV !== 'test') {
+  const server = app.listen(config.port, () => {
+    console.log(`AMS API running on port ${config.port} [${config.nodeEnv}]`);
+    startScheduledJobs();
+  });
 
-server.on('error', (err: any) => {
-  if (err.code === 'EADDRINUSE') {
-    console.error(`[Fatal] Port ${config.port} is already in use by another process. Please free port ${config.port}.`);
-  } else {
-    console.error('[Fatal] Server error:', err);
-  }
-  process.exit(1);
-});
+  server.on('error', (err: any) => {
+    if (err.code === 'EADDRINUSE') {
+      console.error(`[Fatal] Port ${config.port} is already in use by another process. Please free port ${config.port}.`);
+    } else {
+      console.error('[Fatal] Server error:', err);
+    }
+    process.exit(1);
+  });
+}
 
 process.on('unhandledRejection', (reason) => {
   console.error('[Unhandled Rejection]', reason);

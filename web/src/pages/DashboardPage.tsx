@@ -685,10 +685,10 @@ export default function DashboardPage() {
         {/* 2-Column Auditor Layout: Donut Chart & Transactions */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Member Payment Overview Donut */}
-          <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm flex flex-col justify-between">
+          <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm flex flex-col justify-between min-w-0 w-full">
             <h3 className="text-base font-bold text-gray-900 mb-2">Member Payment Overview</h3>
-            <div className="h-64 relative flex items-center justify-center">
-              <ResponsiveContainer width="100%" height="100%">
+            <div className="h-64 w-full min-w-0 relative">
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={200}>
                 <PieChart>
                   <Pie
                     data={donutData}
@@ -899,7 +899,7 @@ export default function DashboardPage() {
       {/* 2 Charts Grid (Income Overview Bar + Payment Status Donut) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Income Overview Bar Chart */}
-        <div className="lg:col-span-2 bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
+        <div className="lg:col-span-2 bg-white rounded-2xl p-6 border border-gray-200 shadow-sm min-w-0 w-full">
           <div className="flex items-center justify-between mb-6">
             <div>
               <h3 className="text-base font-bold text-gray-900">Income Overview</h3>
@@ -912,8 +912,8 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          <div className="h-72">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="h-72 w-full min-w-0">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={200}>
               <BarChart data={barChartData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                 <XAxis dataKey="month" stroke="#94a3b8" fontSize={12} tickLine={false} />
@@ -928,14 +928,14 @@ export default function DashboardPage() {
         </div>
 
         {/* Payment Status Donut */}
-        <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm flex flex-col justify-between">
+        <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm flex flex-col justify-between min-w-0 w-full">
           <div>
             <h3 className="text-base font-bold text-gray-900 mb-1">Payment Status</h3>
             <p className="text-xs text-gray-500">Current obligation completion ratio</p>
           </div>
 
-          <div className="h-56 relative flex items-center justify-center my-2">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="h-56 w-full min-w-0 relative my-2">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={200}>
               <PieChart>
                 <Pie
                   data={adminDonut.length > 0 ? adminDonut : [{ name: 'None', value: 1, color: '#e2e8f0' }]}

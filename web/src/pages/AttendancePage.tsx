@@ -1140,13 +1140,13 @@ export default function AttendancePage() {
           {/* Recharts Analytics Section */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Status Distribution Chart */}
-            <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-xs">
+            <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-xs w-full min-w-0">
               <h3 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
                 <PieIcon size={16} className="text-emerald-600" />
                 <span>{isOm ? 'Qoodiinsa Haala Hirmaannaa' : 'Attendance Status Distribution'}</span>
               </h3>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
+              <div className="h-64 w-full min-w-0">
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={200}>
                   <PieChart>
                     <Pie
                       data={dashboardData?.statusDistribution || []}
@@ -1170,13 +1170,13 @@ export default function AttendancePage() {
             </div>
 
             {/* Meeting Comparison Chart */}
-            <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-xs">
+            <div className="bg-white rounded-2xl border border-gray-200 p-5 shadow-xs w-full min-w-0">
               <h3 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
                 <BarChart2 size={16} className="text-emerald-600" />
                 <span>{isOm ? 'Waliindorgommii Walga\'iiwwanii' : 'Recent Meeting Attendance Comparison'}</span>
               </h3>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
+              <div className="h-64 w-full min-w-0">
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={200}>
                   <BarChart data={dashboardData?.meetingComparisons || []}>
                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
                     <XAxis dataKey="title" tick={{ fontSize: 11 }} />
